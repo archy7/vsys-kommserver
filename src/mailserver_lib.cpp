@@ -63,6 +63,15 @@ void mailserver::run(){
 
     string message;
 
+    /**
+        for( auto this_robot: robot_vec ){
+            auto find_lambda = [this_robot](){this_robot->find_exit();};
+            thread_vec.push_back(std::make_shared<std::thread>(find_lambda));
+    }
+
+    */
+
+
     while(1){
         cout << "listening..." << endl;
         int stream_sd;
@@ -70,8 +79,9 @@ void mailserver::run(){
             cerr << "error accepting connection." << endl;
         }
         else{
-            this->welcome_client(stream_sd);
-            this->communicate(stream_sd);
+            auto communicate_lambda = [this, stream_sd](){this->communicate(stream_sd);};
+            this->server_threads.push_back(make_shared<std::thread>(communicate_lambda));
+            //this->communicate(stream_sd);
         }
 
     }
@@ -154,6 +164,7 @@ int mailserver::receive_message(int stream_sd, string& message){
 
 void mailserver::communicate(int stream_sd){
 
+    this->welcome_client(stream_sd);
 
     /**
         Here the actual communication between server and client takes place.

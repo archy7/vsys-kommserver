@@ -24,6 +24,7 @@
 //#include <vector>
 #include <list>
 #include <memory>
+#include <thread>
 #include <dirent.h> //Verzeichnis-funktionen
 #include <sys/stat.h>
 
@@ -40,6 +41,7 @@ class mailserver{
 private:
     //Serveroperationen
     std::list<server_operation*> op_list;
+    std::list<std::shared_ptr<std::thread>> server_threads;
 
     //Server-Socket-Eigenschaften
     int listen_sd;
