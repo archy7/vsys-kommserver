@@ -25,6 +25,8 @@
 #include <regex>
 
 #include "../headers/client_operation.h"
+#include "../headers/dir_handler.h"
+#include "../headers/mails.h"
 
 #define MSG_BUF 1024
 #define MAX_RETRIES 3
@@ -36,6 +38,8 @@ class mailclient{
 private:
     //Clientoperationen
     std::list<client_operation*> op_list;
+
+    std::string username = "";
 
     //Socketeigenschaften
     int sd;
@@ -54,6 +58,9 @@ public:
     void communicate();
     void receive_welcome();
 
+    void set_username(std::string username);
+    std::string get_username();
+    bool user_logged_in();
     //static void static_shutdown(int sig);
 };
 

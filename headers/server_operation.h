@@ -16,6 +16,12 @@ public:
 friend class mailserver;
 };
 
+class login_operation : public server_operation{
+public:
+    using server_operation::server_operation;
+    std::string execute(std::stringstream& message_stream, dir_handler& this_handler);
+};
+
 class send_operation : public server_operation{
 public:
     using server_operation::server_operation;

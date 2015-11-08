@@ -17,6 +17,8 @@ private:
     std::string subject;
     std::string content;
     std::string filename;
+    std::list<std::string> attachments;
+    unsigned int attachment_count;
 
     std::string create_file_name(std::string);
 

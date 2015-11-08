@@ -6,6 +6,9 @@ EXECS = mailserver mailclient
 all: ${EXECS}
 mailserver: mailserver.o mailserver_lib.o mails.o server_operation.o dir_handler.o
 	${CC} ${CFLAGS} -o mailserver mailserver.o mailserver_lib.o mails.o server_operation.o dir_handler.o
+mailclient: mailclient.o mailclient_lib.o client_operation.o mails.o dir_handler.o
+	${CC} ${CFLAGS} -o mailclient mailclient.o mailclient_lib.o mails.o client_operation.o dir_handler.o
+
 mailserver.o: src/mailserver.cpp headers/mailserver.h 
 	${CC} ${CFLAGS} -o mailserver.o -c src/mailserver.cpp
 mailserver_lib.o: src/mailserver_lib.cpp headers/mailserver.h
@@ -17,8 +20,8 @@ server_operation.o: src/server_operation.cpp headers/server_operation.h
 dir_handler.o: src/dir_handler.cpp headers/dir_handler.h
 	${CC} ${CFLAGS} -o dir_handler.o -c src/dir_handler.cpp
 ##
-mailclient: mailclient.o mailclient_lib.o client_operation.o
-	${CC} ${CFLAGS} -o mailclient mailclient.o mailclient_lib.o client_operation.o
+##mailclient: mailclient.o mailclient_lib.o client_operation.o mails.o dir_handler.o
+##	${CC} ${CFLAGS} -o mailclient mailclient.o mailclient_lib.o client_operation.o dir_handler.o
 mailclient.o: src/mailclient.cpp headers/mailclient.h
 	${CC} ${CFLAGS} -o mailclient.o -c src/mailclient.cpp
 mailclient_lib.o: src/mailclient_lib.cpp headers/mailclient.h

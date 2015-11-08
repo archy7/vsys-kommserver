@@ -30,7 +30,7 @@ int client_operation::getch(){
     return ch;
 }
 
-string client_operation::getpass(const string& name, bool asterisks){
+void client_operation::prompt_input_password(const string& name, string& message, bool asterisks){
 
     const char BACKSPACE = 127;
     const char RETURN = 10;
@@ -59,7 +59,8 @@ string client_operation::getpass(const string& name, bool asterisks){
     }
 
     cout << endl;
-    return password;
+    message += password;
+    message += "\n";
 
 }
 
@@ -82,7 +83,7 @@ void client_operation::prompt_input(const string& name, string &message, size_t 
     message += "\n";
 }
 
-void client_operation::prompt_input_user(const string& name, string &message){
+string client_operation::prompt_input_user(const string& name, string &message){
 
     string input = "";
     std::regex user_regex("^([i][f][1][4][b][0])([0][1-9]|[1-7][0-9])$");
@@ -99,6 +100,8 @@ void client_operation::prompt_input_user(const string& name, string &message){
 
     message += input;
     message += "\n";
+
+    return input;
 }
 
 void client_operation::prompt_input(const string& name, string &message){
@@ -120,23 +123,32 @@ void client_operation::prompt_input(const string& name, string &message){
 
 }
 
-string send_operation::execute(){
+string login_operation::execute(mailclient* this_client){
+
+    string message = "LOGIN\n";
+
+    this_client->set_username(prompt_input_user("your Username", message));
+    prompt_input_password("Password", message, true);
+
+    message += ".\n";
+
+    return message;
+}
+
+string send_operation::execute(mailclient* this_client){
+
+    if(false ==this_client->user_logged_in()){
+        return "LOGIN_ERR";
+    }
 
     string message = "SEND\n";
 
-    prompt_input_user("Sender", message);
+    //prompt_input_user("Sender", message);
+    message += this_client->get_username();
+    message += "\n";
+
     prompt_input_user("Receiver", message);
 
-
-    {
-        string testpass = "null";
-        string password = this->getpass("Password", true);
-
-        if(testpass == password)
-            cout << "OH YEAHHHHHH" << endl;
-        else
-            cout << "OHH NOOOESSS" << endl;
-    }
 
     prompt_input("Subject", message, 80);
     prompt_input("Content of your message", message);
@@ -147,23 +159,35 @@ string send_operation::execute(){
 
 }
 
-string list_operation::execute(){
+string list_operation::execute(mailclient* this_client){
+
+    if(false ==this_client->user_logged_in()){
+        return "LOGIN_ERR";
+    }
 
     string message = "LIST\n";
 
-    prompt_input_user("Username", message);
+    //prompt_input_user("Sender", message);
+    message += this_client->get_username();
+    message += "\n";
 
     message += ".\n";
 
     return message;
 }
 
-string read_operation::execute(){
+string read_operation::execute(mailclient* this_client){
+
+    if(false ==this_client->user_logged_in()){
+        return "LOGIN_ERR";
+    }
 
     string message = "READ\n";
     string mail_id;
 
-    prompt_input_user("Username", message);
+    //prompt_input_user("Sender", message);
+    message += this_client->get_username();
+    message += "\n";
     prompt_input("Mailnumber", message, 10000);
 
     message += ".\n";
@@ -171,11 +195,17 @@ string read_operation::execute(){
     return message;
 }
 
-string delete_operation::execute(){
+string delete_operation::execute(mailclient* this_client){
+
+    if(false ==this_client->user_logged_in()){
+        return "LOGIN_ERR";
+    }
 
     string message = "DEL\n";
 
-    prompt_input_user("Username", message);
+    //prompt_input_user("Sender", message);
+    message += this_client->get_username();
+    message += "\n";
     prompt_input("Message number", message);
 
     message += ".\n";
@@ -183,9 +213,17 @@ string delete_operation::execute(){
     return message;
 }
 
-string quit_operation::execute(){
+string quit_operation::execute(mailclient* this_client){
+
+    if(false ==this_client->user_logged_in()){
+        return "INSTANT_QUIT";
+    }
 
     string message = "QUIT\n";
+
+    //prompt_input_user("Sender", message);
+    message += this_client->get_username();
+    message += "\n";
 
     message += ".\n";
 

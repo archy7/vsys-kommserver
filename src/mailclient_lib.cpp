@@ -32,11 +32,12 @@ mailclient::mailclient(int port, string ip_string){
 
     delete ip_chars;
 
-    this->op_list.push_back(new send_operation(1, "SEND"));
-    this->op_list.push_back(new list_operation(2, "LIST"));
-    this->op_list.push_back(new read_operation(3, "READ"));
-    this->op_list.push_back(new delete_operation(4, "DEL"));
-    this->op_list.push_back(new quit_operation(5, "QUIT"));
+    this->op_list.push_back(new login_operation(1, "LOGIN"));
+    this->op_list.push_back(new send_operation(2, "SEND"));
+    this->op_list.push_back(new list_operation(3, "LIST"));
+    this->op_list.push_back(new read_operation(4, "READ"));
+    this->op_list.push_back(new delete_operation(5, "DEL"));
+    this->op_list.push_back(new quit_operation(6, "QUIT"));
 }
 
 mailclient::~mailclient(){
@@ -54,6 +55,18 @@ mailclient::~mailclient(){
         delete ptr;
     }
 
+}
+
+void mailclient::set_username(string username){
+    this->username = username;
+}
+
+string mailclient::get_username(){
+    return this->username;
+}
+
+bool mailclient::user_logged_in(){
+    return !this->username.empty();
 }
 
 void mailclient::connect_to_server(){ //Verbinden und Antwort des Servers erwarten
@@ -103,14 +116,16 @@ void mailclient::receive_welcome(){
         //cout << c_message;
         /**
             The welcome message of the server at this point has the following format (example):
-            "SEND\nLIST\nREAD\nDEL\n.\n"
+            "LOGIN\nSEND\nLIST\nREAD\nDEL\nQUIT\n.\n"
 
             reading as:
 
+            LOGIN
             SEND
             LIST
             READ
             DEL
+            QUIT
             .
 
             It must now be parsed to set the Client operations' availability accordingly.
@@ -125,7 +140,7 @@ void mailclient::receive_welcome(){
                 break;
             }
             for(auto ptr : this->op_list){
-                if(op_name == ptr->name || "QUIT" == ptr->name){
+                if(op_name == ptr->name){
                     ptr->available = true;
                 }
             }
@@ -143,48 +158,7 @@ void mailclient::receive_welcome(){
 
 void mailclient::communicate(){
 
-    /*do{
-        cout << "Send message: "<< endl;
-        char message_line[MSG_BUF-100]; //100 ~ Empfänger + Sender + Betreff
-        memset(message_line, 0, sizeof(message_line));
-        //strcpy(message, "");
-        while(1){
-            fgets (message_line, MSG_BUF-100, stdin);
-            strcat(message, message_line);
-            if(strcmp(message_line, ".\n") == 0){
-                break;
-            }
-            if(strcmp(message_line, ".\n") != 0){
-                strcat(message, message_line);
-            }
-            else{
-                break;
-            }/
-        }
-        cout << "message being sent to server: " <<endl << message;
-        send(this->sd, message, strlen (message), 0);
-        memset(message, 0, sizeof(message));
-
-        *
-            Antwort des Servers auf den Auftrag an den Server
-        /
-        message_size=recv(this->sd,message,MSG_BUF-1, 0);
-        if (message_size>0){
-            message[message_size]= '\0';
-            cout << "Server replied: " << message;
-            memset(message, 0, sizeof(message));
-            //printf("%s",buffer);
-        }
-    }
-    while (strcmp (message, "quit\n") != 0);*/
-
-    /*signal(SIGINT, mailclient::static_shutdown);
-    signal(SIGHUP, mailclient::static_shutdown);
-    signal(SIGQUIT, mailclient::static_shutdown);*/
-
-    while(1){
-
-        if(!this->running) break;
+    while(this->running){
 
         cout << "Choose what you wish to do" << endl;
         for( auto ptr : this->op_list){
@@ -197,12 +171,31 @@ void mailclient::communicate(){
         transform(op_wish.begin(), op_wish.end(), op_wish.begin(), ::toupper);
         for( auto ptr : this->op_list){
             if(ptr->name == op_wish){
-                string message = ptr->execute();
+                string message = ptr->execute(this);
+
+                if(message=="LOGIN_ERR"){
+                    cout << "You need to login first." << endl;
+                    break;
+                }
+
+
+                if(message=="INSTANT_QUIT"){
+                    cout << "GOOD BYE!" << endl;
+                    this->running = 0;
+                    break;
+                }
 
                 send_all(message);
                 string answer;
                 receive_answer(answer);
                 cout << answer;
+
+                /**
+                    für später:
+                        Jede operation weiß, welche Antwort sie erwartet.
+                        deshalb:
+                            ptr->handle_answer(answer);
+                */
                 if(answer == "GOOD BYE!\n"){
                     this->running = 0;
                 }

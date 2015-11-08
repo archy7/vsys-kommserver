@@ -2,6 +2,7 @@
 #include "../headers/server_operation.h"
 #include "../headers/dir_handler.h"
 
+
 using namespace std;
 
 dir_handler::dir_handler(){
@@ -24,6 +25,18 @@ dir_handler dir_handler::make_dir_handler(string path){
     }
 
     return this_handler;
+}
+
+void dir_handler::set_username(std::string username){
+    this->username = username;
+}
+
+std::string dir_handler::get_username(){
+    return this->username;
+}
+
+bool dir_handler::user_logged_in(){
+    return !this->username.empty();
 }
 
 bool dir_handler::mail_list_is_empty(){

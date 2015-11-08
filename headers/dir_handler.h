@@ -15,6 +15,7 @@ private:
     std::list<mail> mail_list;
     dir_handler();
     static std::string make_absolute_base_path(std::string path);
+    std::string username = "";
 public:
     ~dir_handler();
     static dir_handler make_dir_handler(std::string path);
@@ -27,6 +28,10 @@ public:
     std::list<mail> get_mail_list();
     int get_mail_list_length() const;
     std::string list_to_message() const;
+
+    void set_username(std::string username);
+    std::string get_username();
+    bool user_logged_in();
 };
 
 #endif // DIR_HANDLER_H_INCLUDED

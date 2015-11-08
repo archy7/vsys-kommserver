@@ -14,7 +14,45 @@ server_operation::~server_operation(){
 
 }
 
+string login_operation::execute(stringstream& message_stream, dir_handler& this_handler){
+
+    string username;
+    string password;
+    string last1;
+
+    getline(message_stream, username);
+    /**
+        KONTROLLEN FÜR ALLE EINGABEN
+    */
+    getline(message_stream, password);
+    getline(message_stream, last1);
+
+    if(last1.compare(".")!=0){
+        return "ERR(Protocol was violated)\n";
+    }
+
+    /**
+        AN DIESER STELLE MUSS DIE LDAP AUTHENTIFIZIERUNG ERFOLGEN
+        TEMPORÄR HARDCODEN
+    */
+
+    if(password == "null"){
+        this_handler.set_username(username);
+
+        return "OK\nWelcome, " + username + "!\n";
+    }
+    else{
+        return "ERR\n";
+    }
+
+}
+
+
 string send_operation::execute(stringstream& message_stream, dir_handler& this_handler){
+
+    if(false == this_handler.user_logged_in()){
+        return "ERR\n(No user is logged in)";
+    }
 
     string sender;
     string receiver;
@@ -167,6 +205,10 @@ string send_operation::execute(stringstream& message_stream, dir_handler& this_h
 }
 
 string read_operation::execute(stringstream& message_stream, dir_handler& this_handler){
+
+    if(false == this_handler.user_logged_in()){
+        return "ERR\n(No user is logged in)";
+    }
 
     string receiver;
     string mail_id;
@@ -324,6 +366,10 @@ string read_operation::execute(stringstream& message_stream, dir_handler& this_h
 
 string list_operation::execute(stringstream& message_stream, dir_handler& this_handler){
 
+    if(false == this_handler.user_logged_in()){
+        return "ERR\n(No user is logged in)";
+    }
+
     string receiver;
     string last1;
 
@@ -426,6 +472,10 @@ string list_operation::execute(stringstream& message_stream, dir_handler& this_h
 }
 
 string delete_operation::execute(stringstream& message_stream, dir_handler& this_handler){
+
+    if(false == this_handler.user_logged_in()){
+        return "ERR\n(No user is logged in)";
+    }
 
     string receiver;
     string mail_id;
@@ -548,6 +598,10 @@ string delete_operation::execute(stringstream& message_stream, dir_handler& this
 }
 
 string quit_operation::execute(stringstream& message_stream, dir_handler& this_handler){
+
+    if(false == this_handler.user_logged_in()){
+        return "ERR\n(No user is logged in)";
+    }
 
     return "GOOD BYE!\n";
 }

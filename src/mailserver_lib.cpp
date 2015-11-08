@@ -35,11 +35,12 @@ mailserver::mailserver(int port, string directory){
     //shared_ptr<server_operation> temp_ptr;
 
     //temp_ptr = make_shared<send_operation>(1, "SEND");
-    this->op_list.push_back(new send_operation(1, "SEND"));
-    this->op_list.push_back(new list_operation(2, "LIST"));
-    this->op_list.push_back(new read_operation(3, "READ"));
-    this->op_list.push_back(new delete_operation(4, "DEL"));
-    this->op_list.push_back(new quit_operation(5, "QUIT"));
+    this->op_list.push_back(new login_operation(1, "LOGIN"));
+    this->op_list.push_back(new send_operation(2, "SEND"));
+    this->op_list.push_back(new list_operation(3, "LIST"));
+    this->op_list.push_back(new read_operation(4, "READ"));
+    this->op_list.push_back(new delete_operation(5, "DEL"));
+    this->op_list.push_back(new quit_operation(6, "QUIT"));
 }
 
 mailserver::~mailserver(){
@@ -81,7 +82,6 @@ void mailserver::run(){
         else{
             auto communicate_lambda = [this, stream_sd](){this->communicate(stream_sd);};
             this->server_threads.push_back(make_shared<std::thread>(communicate_lambda));
-            //this->communicate(stream_sd);
         }
 
     }
@@ -94,9 +94,6 @@ int mailserver::send_all(int stream_sd, const string& message){
     int bytes_left = message.length();
     int bytes_sent = 0;
 
-    /*char * c_message = new char[message.size()+1];
-    c_message = message.c_str();*/
-
     const char * c_message = message.c_str();
 
     while(total < message.length()){
@@ -108,7 +105,6 @@ int mailserver::send_all(int stream_sd, const string& message){
         total += bytes_sent;
         bytes_left -= bytes_sent;
     }
-    //delete[] c_message;
     return total;
 }
 
