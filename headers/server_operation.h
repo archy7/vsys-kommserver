@@ -3,6 +3,20 @@
 
 #include "../headers/dir_handler.h"
 
+#include <string.h>
+#include <stdlib.h>
+#include <ldap.h>
+//#include <lber.h>
+
+#define LDAP_HOST "ldap.technikum-wien.at"
+#define LDAP_PORT 389
+#define SEARCHBASE "dc=technikum-wien,dc=at"
+#define SCOPE LDAP_SCOPE_SUBTREE
+#define FILTER "(uid=if14b*)"
+#define ANON_USER NULL		/* anonymous bind with user and pw NULL */
+#define ANON_PW NULL
+
+
 class server_operation{
 
 private:

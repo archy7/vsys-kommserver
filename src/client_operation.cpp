@@ -123,6 +123,45 @@ void client_operation::prompt_input(const string& name, string &message){
 
 }
 
+vector<string> client_operation::prompt_input_attachments(){
+
+    string input = "";
+    vector<string> filepaths;
+    filepaths.clear();  //zu 90% redundant -> bestätigen
+    bool attaching = true;
+
+    cout << "Do you want to attach files to your mail? [y/n]" << endl;
+
+    do{
+        if(!input.empty()){
+            cout << "There is only yes [y] or no [n]." << endl;
+        }
+        getline(cin, input);
+    }while("y" != input && "n" != input);
+
+    if(input == "y"){
+        cout << "Specify the path to the file that you want to attach:" << endl;
+        //<< "Enter . to stoqp adding files(currently only one allowed and possible)" << endl;
+        while(attaching){
+            getline(cin, input);
+            if("." == input){
+                break;
+            }
+            string filepath = dir_handler::make_absolute_base_path(input);
+            if(filepath.empty()){
+                cout << "could not find the specified file" << endl;
+            }
+            else{
+                filepaths.push_back(filepath);
+                attaching = false; //Das hier sorgt dafür, dass nur eine Datei angehängt werden kann
+            }
+        }
+
+    }
+
+    return filepaths;
+}
+
 string login_operation::execute(mailclient* this_client){
 
     string message = "LOGIN\n";
@@ -132,12 +171,19 @@ string login_operation::execute(mailclient* this_client){
 
     message += ".\n";
 
+    this_client->send_all(message);
+    string answer;
+    this_client->receive_answer(answer);
+
+    cout << answer;
+
     return message;
 }
 
 string send_operation::execute(mailclient* this_client){
 
     if(false ==this_client->user_logged_in()){
+        cout << "You need to login first." << endl;
         return "LOGIN_ERR";
     }
 
@@ -146,22 +192,125 @@ string send_operation::execute(mailclient* this_client){
     //prompt_input_user("Sender", message);
     message += this_client->get_username();
     message += "\n";
-
     prompt_input_user("Receiver", message);
-
-
     prompt_input("Subject", message, 80);
     prompt_input("Content of your message", message);
+    auto filepaths = prompt_input_attachments();
+    /**
+        filesize, filename, binary
+    */
 
     message += ".\n";
 
-    return message;
+    int attachment_count = filepaths.size();
+
+    message += to_string(attachment_count);
+    message += "\n";
+
+    if(attachment_count > 0){
+        struct stat buf;
+        int status;
+
+        for( auto filepath : filepaths){
+            const char* c_path = new char[filepath.length()+1];
+            c_path = filepath.c_str();
+
+            if(stat(c_path, &buf)== -1){
+                cerr << "failed to get status info on file " << filepath << endl;
+            }
+            //find filename
+            string filename = filepath.substr(filepath.rfind("/")+1);
+            cout << "TEST: " << filename << endl;
+
+            message += filename;
+            message += "\n";
+
+            //find filesize
+            int filesize = buf.st_size;
+
+            message += to_string(filesize);
+            message += "\n";
+
+        }
+
+    }
+
+    message += ".\n";
+
+    /**
+
+    Form ohne Attachment:
+
+    <SENDER>\n
+    <RECEIVER>;<RECEIVER>;<RECEIVER>;<RECEIVER>;\n
+    <SUBJECT>\n
+    <MESSAGE>\n
+    .\n
+    <NUMBER OF ATTACHMENTS>\n
+    .\n
+
+    Form mit Attachment:
+
+    <SENDER>\n
+    <RECEIVER>;<RECEIVER>;<RECEIVER>;<RECEIVER>;\n
+    <SUBJECT>\n
+    <MESSAGE>\n
+    .\n
+    <NUMBER OF ATTACHMENTS>\n
+    ?<FILENAME>\n
+    ?<FILESIZE>\n
+    .\n
+
+    Die binären Daten der Datei werden in einem separaten send verschickt (sendfile()).
+
+    */
+
+    this_client->send_all(message);
+
+    //cout << message;
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
+
+    if(attachment_count > 0){
+
+        for( auto filepath : filepaths){
+            const char* c_path = new char[filepath.length()+1];
+            c_path = filepath.c_str();
+
+            FILE* fp = fopen(c_path, "rb");
+            int in_fd = fileno(fp);
+            unsigned char buffer[1024];
+            //sendfile(this_client->sd, in_fd, NULL, 1024);
+            //receive an answer to the data transfer
+
+        }
+    }
+
+    return "";
+
+    /*
+
+    this_client->send_all(message);
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
+
+    /**
+        für später:
+            Jede operation weiß, welche Antwort sie erwartet.
+            hier kann man die antwort parsen, in daten strukturen umwandeln, etc.
+    *
+    if(answer == "GOOD BYE!\n"){
+        this_client->running = 0;
+    }*/
 
 }
 
 string list_operation::execute(mailclient* this_client){
 
     if(false ==this_client->user_logged_in()){
+        cout << "You need to login first." << endl;
         return "LOGIN_ERR";
     }
 
@@ -179,6 +328,7 @@ string list_operation::execute(mailclient* this_client){
 string read_operation::execute(mailclient* this_client){
 
     if(false ==this_client->user_logged_in()){
+        cout << "You need to login first." << endl;
         return "LOGIN_ERR";
     }
 
@@ -198,6 +348,7 @@ string read_operation::execute(mailclient* this_client){
 string delete_operation::execute(mailclient* this_client){
 
     if(false ==this_client->user_logged_in()){
+        cout << "You need to login first." << endl;
         return "LOGIN_ERR";
     }
 
@@ -216,6 +367,8 @@ string delete_operation::execute(mailclient* this_client){
 string quit_operation::execute(mailclient* this_client){
 
     if(false ==this_client->user_logged_in()){
+        cout << "GOOD BYE!" << endl;
+        this_client->stop();
         return "INSTANT_QUIT";
     }
 

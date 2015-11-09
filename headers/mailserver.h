@@ -28,8 +28,6 @@
 #include <dirent.h> //Verzeichnis-funktionen
 #include <sys/stat.h>
 
-#include <ldap.h>
-
 #include "../headers/server_operation.h"
 
 #define MSG_BUF 1024

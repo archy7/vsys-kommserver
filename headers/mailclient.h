@@ -35,6 +35,8 @@
 
 class mailclient{
 
+friend class client_operation;
+
 private:
     //Clientoperationen
     std::list<client_operation*> op_list;
@@ -44,8 +46,8 @@ private:
     //Socketeigenschaften
     int sd;
     struct sockaddr_in server_adr;
-    int send_all(const std::string& message);
-    int receive_answer(std::string& answer);
+
+
 
     bool running = 1;
 
@@ -61,6 +63,9 @@ public:
     void set_username(std::string username);
     std::string get_username();
     bool user_logged_in();
+    int send_all(const std::string& message);
+    int receive_answer(std::string& answer);
+    void stop();
     //static void static_shutdown(int sig);
 };
 

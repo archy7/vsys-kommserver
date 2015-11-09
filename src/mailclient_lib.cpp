@@ -87,6 +87,10 @@ void mailclient::connect_to_server(){ //Verbinden und Antwort des Servers erwart
     }
 }
 
+void mailclient::stop(){
+    this->running = 0;
+}
+
 void mailclient::run(){
 
     this->connect_to_server();
@@ -173,7 +177,7 @@ void mailclient::communicate(){
             if(ptr->name == op_wish){
                 string message = ptr->execute(this);
 
-                if(message=="LOGIN_ERR"){
+                /*if(message=="LOGIN_ERR"){
                     cout << "You need to login first." << endl;
                     break;
                 }
@@ -195,10 +199,10 @@ void mailclient::communicate(){
                         Jede operation weiß, welche Antwort sie erwartet.
                         deshalb:
                             ptr->handle_answer(answer);
-                */
+                *
                 if(answer == "GOOD BYE!\n"){
                     this->running = 0;
-                }
+                }*/
                 break;
             }
         }

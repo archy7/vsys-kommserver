@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <random>
 #include <sstream>
+#include <pthread.h>
 
 class mail{
 private:
@@ -17,7 +18,7 @@ private:
     std::string subject;
     std::string content;
     std::string filename;
-    std::list<std::string> attachments;
+    std::vector<std::string> attachments;
     unsigned int attachment_count;
 
     std::string create_file_name(std::string);
@@ -26,7 +27,7 @@ private:
 
 public:
     ~mail();
-    static mail make_new_mail(std::string sender, std::string receiver, std::string subject, std::string content);
+    static mail make_new_mail(std::string sender, std::string receiver, std::string subject, std::string content, int attachment_count, std::vector<std::string> filepaths);
     static mail make_mail_from_file(std::string filepath, std::string mail_name);
     bool save_to_file(std::string user_path);
     bool delete_file(std::string user_path) const;

@@ -31,19 +31,96 @@ string login_operation::execute(stringstream& message_stream, dir_handler& this_
         return "ERR(Protocol was violated)\n";
     }
 
-    /**
-        AN DIESER STELLE MUSS DIE LDAP AUTHENTIFIZIERUNG ERFOLGEN
-        TEMPORÄR HARDCODEN
-    */
+    LDAP *ld;			/* LDAP resource handle */
+    LDAPMessage *result, *e;	/* LDAP result handle */
+    //BerElement *ber;		/* array of attributes */
+    //char *attribute;
+    //char **vals;
 
-    if(password == "null"){
-        this_handler.set_username(username);
+    //int i,rc=0;
+    int rc=0;
 
-        return "OK\nWelcome, " + username + "!\n";
+    char *attribs[3];		/* attribute array for search */
+
+    attribs[0]=strdup("uid");		/* return uid and cn of entries */
+    attribs[1]=strdup("cn");
+    attribs[2]=NULL;		/* array must be NULL terminated */
+
+
+    /* setup LDAP connection */
+    if ((ld=ldap_init(LDAP_HOST, LDAP_PORT)) == NULL)
+    {
+      perror("ldap_init failed");
+      return "ERR(Could not reach LDAP Server)\n";
     }
-    else{
-        return "ERR\n";
+
+    printf("connected to LDAP server %s on port %d\n",LDAP_HOST,LDAP_PORT);
+
+    /* anonymous bind */
+    rc = ldap_simple_bind_s(ld,ANON_USER,ANON_PW);
+
+    if (rc != LDAP_SUCCESS)
+    {
+      fprintf(stderr,"LDAP error: %s\n",ldap_err2string(rc));
+      return "ERR(LDAP Error: anon bind failed)\n";
     }
+    else
+    {
+      printf("bind successful\n");
+    }
+
+    string filter = "(uid=";
+    filter += username;
+    filter += ")";
+    const char* c_user = new char[filter.length()+1];
+    c_user = filter.c_str();
+
+    /* search for the user that wants to log in */
+    rc = ldap_search_s(ld, SEARCHBASE, SCOPE, c_user, attribs, 0, &result);
+
+    if (rc != LDAP_SUCCESS)
+    {
+      fprintf(stderr,"LDAP error: %s\n",ldap_err2string(rc));
+      return "ERR(LDAP Error: search failed)\n";
+    }
+
+    /* check if the user exists */
+    int entry_count;
+    //printf("Total results: %d\n", ldap_count_entries(ld, result));
+    if((entry_count = ldap_count_entries(ld, result)) != 1){
+        if(0 == entry_count){
+            return "ERR(Specified uid not found)\n";
+        }
+        else if(entry_count > 1){
+            return "ERR(Critical error: More than one user with specified uid exists)\n";
+        }
+
+    }
+
+    e = ldap_first_entry(ld, result);
+
+    const char* c_pass = new char[password.length()+1];
+    c_pass = password.c_str();
+
+    rc = ldap_simple_bind_s(ld,ldap_get_dn(ld,e),c_pass);
+
+    if (rc != LDAP_SUCCESS)
+    {
+      fprintf(stderr,"LDAP error: %s\n",ldap_err2string(rc));
+      return "ERR(LDAP Error: authenication failed)\n";
+    }
+
+    // free memory used for result
+    ldap_msgfree(result);
+    free(attribs[0]);
+    free(attribs[1]);
+    printf("LDAP search suceeded\n");
+
+    ldap_unbind(ld);
+
+    this_handler.set_username(username);
+
+    return "OK\nWelcome, " + username + "!\n";
 
 }
 
@@ -51,6 +128,7 @@ string login_operation::execute(stringstream& message_stream, dir_handler& this_
 string send_operation::execute(stringstream& message_stream, dir_handler& this_handler){
 
     if(false == this_handler.user_logged_in()){
+
         return "ERR\n(No user is logged in)";
     }
 
@@ -58,6 +136,8 @@ string send_operation::execute(stringstream& message_stream, dir_handler& this_h
     string receiver;
     string subject;
     string line;
+
+    string attachment_count;
 
     string content;
 
@@ -72,43 +152,62 @@ string send_operation::execute(stringstream& message_stream, dir_handler& this_h
     getline(message_stream, subject);
 
     //Der Rest ist Inhalt + \n.\n
+    bool reading_content = true;
     while(!message_stream.eof()){
-        getline(message_stream, line);
-        content += line;
-        content += "\n";
+        if(reading_content){
+            getline(message_stream, line);
+            if(line == "."){
+                reading_content = false;
+                continue;
+            }
+            content += line;
+            content += "\n";
+
+        }
+        else{
+            getline(message_stream, attachment_count);
+        }
+
     }
 
-    //cout << content;
 
     //Die letzten 3 Zeichen herausziehen und auf Korrektheit überprüfen \n.\n
-    last4 = content.substr(content.length()-4);
+    //last4 = content.substr(content.length()-4);
 
-    if(last4.compare("\n.\n\n")!=0){
+    /*if(last4.compare("\n.\n\n")!=0){
         return "ERR\n(Protocol was violated)";
-    }
+    }*/
 
-    content = content.substr(0,content.rfind("\n.\n"));
+    //content = content.substr(0,content.rfind("\n.\n"));
 
 
     /**
         komtrollen: SIND ZU LÖSCHEN
 
+    */
+
     cout << "Sender: " << sender << endl;
     cout << "Receiver: " << receiver << endl;
     cout << "Subject: " << subject << endl;
     cout << "Content: " << content << endl;
-    */
+    cout << "Attachment count: " << attachment_count << endl;
+
+    int i_attachment_count = stoi(attachment_count);
 
 
+    vector<string> filepaths;
+
+    if(i_attachment_count > 0){
+
+    }
 
     if(this_handler.user_dir_exists(receiver)==false){
         cout << "Could not find user directory, therefore creating one" << endl;
         this_handler.make_user_dir(receiver);
     }
-    //PSEUDO
 
     //make mail from strings
-    mail new_mail = mail::make_new_mail(sender, receiver, subject, content);
+    mail new_mail = mail::make_new_mail(sender, receiver, subject, content, i_attachment_count, filepaths);
     //save mail to file
     string userpath = this_handler.make_absolute_user_path(receiver);
     bool save_succesful = new_mail.save_to_file(userpath);

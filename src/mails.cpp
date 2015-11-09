@@ -49,8 +49,8 @@ string mail::create_file_name(string user_path){
 
     };
 
-    string random_string(15, 0);
-    generate_n(random_string.begin(), 15, randchar);
+    string random_string(10, 0);
+    generate_n(random_string.begin(), 10, randchar);
 
     stringstream date_time;
     date_time << (now->tm_year +1900) << "-"              //put_time(&tm, "%Y-%m-%d-%H:%M:%S")
@@ -62,19 +62,14 @@ string mail::create_file_name(string user_path){
 
     string date_string = date_time.str();
 
+    int thread_id = pthread_self();
+    string thread_id_string = to_string(thread_id);
+
     string filename(user_path);
-    /*filename += (now->tm_year +1900);
-    filename += "-";
-    filename += (now->tm_mon +1);
-    filename += "-";
-    filename += (now->tm_mday);
-    filename += "-";
-    filename += (now->tm_hour);
-    filename += ":";
-    filename += (now->tm_min);
-    filename += ":";
-    filename += (now->tm_sec);*/
+
     filename += date_string;
+    filename += ".";
+    filename += thread_id_string;
     filename += ".";
     filename += random_string;
     filename += ".";
@@ -93,13 +88,15 @@ string mail::create_file_name(string user_path){
     return filename;
 }
 
-mail mail::make_new_mail(string sender, string receiver, string subject, string content){
+mail mail::make_new_mail(string sender, string receiver, string subject, string content, int attachment_count, vector<string> filepaths){
 
     mail this_mail;
     this_mail.sender = sender;
     this_mail.receiver = receiver;
     this_mail.subject = subject;
     this_mail.content = content;
+    this_mail.attachment_count = attachment_count;
+    this_mail.attachments = filepaths;
 
     return this_mail;
 }

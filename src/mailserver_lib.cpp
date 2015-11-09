@@ -177,7 +177,7 @@ void mailserver::communicate(int stream_sd){
         string op_wish;
         getline(message_stream, op_wish);
 
-        string response;
+        string response = "";
         bool op_found = false;
         for(auto ptr : this->op_list){
             if(op_wish == ptr->name){

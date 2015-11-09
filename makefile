@@ -1,11 +1,12 @@
 CC = g++
-CFLAGS = -Wall -pedantic -g -std=c++11 -lldap -DLDAP_DEPRECATED
+CFLAGS = -Wall -pedantic -g -std=c++11
 EXECS = mailserver mailclient
+LDAPFLAGS = -lldap -DLDAP_DEPRECATED -llber
 #######
 
 all: ${EXECS}
 mailserver: mailserver.o mailserver_lib.o mails.o server_operation.o dir_handler.o
-	${CC} ${CFLAGS} -o mailserver mailserver.o mailserver_lib.o mails.o server_operation.o dir_handler.o
+	${CC} ${CFLAGS} -o mailserver mailserver.o mailserver_lib.o mails.o server_operation.o dir_handler.o ${LDAPFLAGS}
 mailclient: mailclient.o mailclient_lib.o client_operation.o mails.o dir_handler.o
 	${CC} ${CFLAGS} -o mailclient mailclient.o mailclient_lib.o mails.o client_operation.o dir_handler.o
 
@@ -16,7 +17,7 @@ mailserver_lib.o: src/mailserver_lib.cpp headers/mailserver.h
 mails.o: src/mails.cpp headers/mails.h
 	${CC} ${CFLAGS} -o mails.o -c src/mails.cpp
 server_operation.o: src/server_operation.cpp headers/server_operation.h
-	${CC} ${CFLAGS} -o server_operation.o -c src/server_operation.cpp
+	${CC} ${CFLAGS} -o server_operation.o -c src/server_operation.cpp ${LDAPFLAGS}
 dir_handler.o: src/dir_handler.cpp headers/dir_handler.h
 	${CC} ${CFLAGS} -o dir_handler.o -c src/dir_handler.cpp
 ##
