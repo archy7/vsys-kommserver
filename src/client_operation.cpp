@@ -48,7 +48,6 @@ void client_operation::prompt_input_password(const string& name, string& message
                 }
                 password.resize(password.length()-1);
             }
-
         }
         else{
             password += ch;
@@ -61,7 +60,6 @@ void client_operation::prompt_input_password(const string& name, string& message
     cout << endl;
     message += password;
     message += "\n";
-
 }
 
 void client_operation::prompt_input(const string& name, string &message, size_t max_len){
@@ -83,19 +81,51 @@ void client_operation::prompt_input(const string& name, string &message, size_t 
     message += "\n";
 }
 
+string client_operation::prompt_input_receivers(const string& name, string &message){
+
+    string input = "";
+    string receivers;
+    std::regex user_regex("^([i][f][1][4][b][0])([0][1-9]|[1-7][0-9])$");
+
+    cout << "Enter the " << name << "(Enter a . to stop):" << endl;
+
+    while(1){
+        getline(cin, input);
+        if(input == "."){
+            break;
+        }
+        if(!regex_match(input, user_regex)){
+            cout << "At least one of the entered user names has an invalid format." << endl
+            << "Please re-enter." << endl;
+            continue;
+        }
+        receivers += input;
+        receivers += ";";
+    }
+
+    message += receivers;
+    message += "\n";
+
+    return input;
+}
+
 string client_operation::prompt_input_user(const string& name, string &message){
 
     string input = "";
     std::regex user_regex("^([i][f][1][4][b][0])([0][1-9]|[1-7][0-9])$");
 
-    while(!regex_match(input, user_regex)){
-        if(input.empty())
-            cout << "Enter the " << name << ":" << endl;
-        else
-            cout << "The entered user name has an invalid format." << endl
-            << "Please re-enter." << endl;
+    cout << "Enter the " << name << ":" << endl;
 
+    while(1){
         getline(cin, input);
+        if(!regex_match(input, user_regex)){
+            cout << "The entered user names has an invalid format." << endl
+            << "Please re-enter." << endl;
+            continue;
+        }
+        else{
+            break;
+        }
     }
 
     message += input;
@@ -192,10 +222,12 @@ string send_operation::execute(mailclient* this_client){
     //prompt_input_user("Sender", message);
     message += this_client->get_username();
     message += "\n";
-    prompt_input_user("Receiver", message);
+    prompt_input_receivers("Receivers", message);
     prompt_input("Subject", message, 80);
     prompt_input("Content of your message", message);
     auto filepaths = prompt_input_attachments();
+    vector<int> filesizes;
+
     /**
         filesize, filename, binary
     */
@@ -227,6 +259,7 @@ string send_operation::execute(mailclient* this_client){
 
             //find filesize
             int filesize = buf.st_size;
+            filesizes.push_back(filesize);
 
             message += to_string(filesize);
             message += "\n";
@@ -265,27 +298,42 @@ string send_operation::execute(mailclient* this_client){
 
     */
 
+    cout << message;
     this_client->send_all(message);
 
-    //cout << message;
-    string answer;
-    this_client->receive_answer(answer);
-    cout << answer;
 
     if(attachment_count > 0){
-
+        int i = 0;
         for( auto filepath : filepaths){
-            const char* c_path = new char[filepath.length()+1];
-            c_path = filepath.c_str();
 
-            FILE* fp = fopen(c_path, "rb");
-            int in_fd = fileno(fp);
-            unsigned char buffer[1024];
-            //sendfile(this_client->sd, in_fd, NULL, 1024);
-            //receive an answer to the data transfer
+            string ok;
+            this_client->receive_answer(ok);
+            cout << ok << endl;
+            if(ok=="GO"){
+                const char* c_path = new char[filepath.length()+1];
+                c_path = filepath.c_str();
+
+                FILE* fp = fopen(c_path, "rb");
+                //int in_fd = fileno(fp);
+                //unsigned char buffer[1024];
+                //sendfile(this_client->sd, in_fd, NULL, 1024);
+                cout << "sending file now: " << filepath << " with size: " << filesizes[i] << endl;
+                this_client->send_file(filepath, filesizes[i]);
+                //receive an answer to the data transfer
+
+            }
+            else{
+                cerr << "Error during file transmission communication" << endl;
+                return "ERR(communication failed)\n";
+            }
+
 
         }
     }
+
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
 
     return "";
 
@@ -322,7 +370,15 @@ string list_operation::execute(mailclient* this_client){
 
     message += ".\n";
 
-    return message;
+
+    //send
+    this_client->send_all(message);
+    //recv
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
+
+    return "";
 }
 
 string read_operation::execute(mailclient* this_client){
@@ -341,6 +397,13 @@ string read_operation::execute(mailclient* this_client){
     prompt_input("Mailnumber", message, 10000);
 
     message += ".\n";
+
+    //send
+    this_client->send_all(message);
+    //recv
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
 
     return message;
 }
@@ -361,16 +424,23 @@ string delete_operation::execute(mailclient* this_client){
 
     message += ".\n";
 
+    //send
+    this_client->send_all(message);
+    //recv
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
+
     return message;
 }
 
 string quit_operation::execute(mailclient* this_client){
 
-    if(false ==this_client->user_logged_in()){
+    /*if(false ==this_client->user_logged_in()){
         cout << "GOOD BYE!" << endl;
         this_client->stop();
         return "INSTANT_QUIT";
-    }
+    }*/
 
     string message = "QUIT\n";
 
@@ -379,6 +449,17 @@ string quit_operation::execute(mailclient* this_client){
     message += "\n";
 
     message += ".\n";
+
+    //send
+    this_client->send_all(message);
+    //recv
+    string answer;
+    this_client->receive_answer(answer);
+    cout << answer;
+
+    if(answer == "GOOD BYE!\n"){
+        this_client->stop();
+    }
 
     return message;
 }

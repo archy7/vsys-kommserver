@@ -44,7 +44,7 @@ private:
     std::string username = "";
 
     //Socketeigenschaften
-    int sd;
+
     struct sockaddr_in server_adr;
 
 
@@ -53,6 +53,8 @@ private:
 
     void connect_to_server();
 public:
+    int sd;
+
     mailclient(int port, std::string ip_string);
     ~mailclient();
 
@@ -64,6 +66,7 @@ public:
     std::string get_username();
     bool user_logged_in();
     int send_all(const std::string& message);
+    int send_file(std::string& filepath, int filesize);
     int receive_answer(std::string& answer);
     void stop();
     //static void static_shutdown(int sig);

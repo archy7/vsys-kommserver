@@ -44,7 +44,7 @@ bool dir_handler::mail_list_is_empty(){
     return this->mail_list.empty();
 }
 
-std::list<mail> dir_handler::get_mail_list(){
+list<mail> dir_handler::get_mail_list(){
 
     return this->mail_list;
 }
@@ -102,16 +102,75 @@ bool dir_handler::create_mail_list(string username){
     return true;
 }
 
-std::string dir_handler::list_to_message() const{
+string dir_handler::list_to_message() const{
 
     stringstream return_stream;
     return_stream   << this->get_mail_list_length() << "\n";
 
     for(const mail& mail_obj : this->mail_list){
         return_stream << mail_obj.get_mail_id() << ". " << mail_obj.get_subject() << "\n";
+        for( string attachment_name : mail_obj.get_attachment_names()){
+            return_stream << "\t" << attachment_name << "\n";
+        }
     }
 
     return return_stream.str();
+}
+
+string dir_handler::create_attachment_name(string filename){
+
+    string new_filename;
+
+    auto t = time(nullptr);
+    auto now = localtime(&t);
+
+    auto randchar = [](){
+
+        const char charset[] = "123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const size_t max_index = (sizeof(charset)-1);
+        return charset[ rand() % max_index];
+
+    };
+
+    string random_string(10, 0);
+    generate_n(random_string.begin(), 10, randchar);
+
+    stringstream date_time;
+    date_time << (now->tm_year +1900) << "-"
+            << (now->tm_mon +1) << "-"
+            << (now->tm_mday) << "-"
+            << (now->tm_hour) << ":"
+            << (now->tm_min) << ":"
+            << (now->tm_sec);
+
+    string date_string = date_time.str();
+
+    int thread_id = pthread_self();
+    string thread_id_string = to_string(thread_id);
+
+    new_filename += date_string;
+    new_filename += ".";
+    new_filename += thread_id_string;
+    new_filename += "_";
+    new_filename += random_string;
+    new_filename += ".";
+    new_filename += filename;
+
+    return new_filename;
+}
+
+string dir_handler::make_absolute_attachment_path(string filename){
+
+    string full_filename = this->create_attachment_name(filename);
+    string attachment_path = this->base_path;
+    attachment_path += "/files/";
+    attachment_path += full_filename;
+
+    return attachment_path;
+}
+
+void dir_handler::update_attachment(std::string attachment_path){
+
 }
 
 string dir_handler::make_absolute_base_path(string path){

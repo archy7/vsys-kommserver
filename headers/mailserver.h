@@ -49,14 +49,16 @@ private:
     std::string directory;
 
     void welcome_client(int stream_sd);
-    int receive_message(int stream_sd, std::string& message);
-    int send_all(int stream_sd, const std::string& message);
+
     void communicate(int stream_sd);
 public:
     mailserver(int port, std::string directory);
     ~mailserver();
 
     void run();
+    int receive_message(int stream_sd, std::string& message);
+    int receive_file(int stream_sd, std::string& filepath, int filesize);
+    int send_all(int stream_sd, const std::string& message);
 
 };
 

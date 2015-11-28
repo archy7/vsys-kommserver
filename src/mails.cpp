@@ -62,7 +62,7 @@ string mail::create_file_name(string user_path){
 
     string date_string = date_time.str();
 
-    int thread_id = pthread_self();
+    long thread_id = pthread_self();
     string thread_id_string = to_string(thread_id);
 
     string filename(user_path);
@@ -88,7 +88,7 @@ string mail::create_file_name(string user_path){
     return filename;
 }
 
-mail mail::make_new_mail(string sender, string receiver, string subject, string content, int attachment_count, vector<string> filepaths){
+mail mail::make_new_mail(string sender, string receiver, string subject, string content, int attachment_count, vector<string> filepaths, vector<int> filesizes){
 
     mail this_mail;
     this_mail.sender = sender;
@@ -97,6 +97,7 @@ mail mail::make_new_mail(string sender, string receiver, string subject, string 
     this_mail.content = content;
     this_mail.attachment_count = attachment_count;
     this_mail.attachments = filepaths;
+    this_mail.filesizes = filesizes;
 
     return this_mail;
 }
@@ -108,7 +109,9 @@ mail mail::make_mail_from_file(string filepath, string mail_name){
     /**
     this_mail.sender = sender;      //In filename ->to be set here
     this_mail.receiver = receiver;  //name of dir -> set outside this method
-    this_mail.subject = subject;    //first line of content ->to be set here
+    this_mail.subject = subject;    //the first line
+    this_mail.attachment_count;     //the second line
+    this_mail.attachments;          //the next 'attachment_count' lines
     this_mail.content = content;    //rest of content -> to be set here
     */
 
@@ -118,6 +121,20 @@ mail mail::make_mail_from_file(string filepath, string mail_name){
     mail_file_stream.open(filepath);
 
     getline(mail_file_stream, this_mail.subject);
+
+    string attachment_count_str;
+    getline(mail_file_stream, attachment_count_str);
+    this_mail.attachment_count = stoi(attachment_count_str);
+
+    string attachment;
+
+    for(unsigned int i = 0; i< this_mail.attachment_count; ++i){
+        getline(mail_file_stream, attachment);
+        this_mail.attachments.push_back(attachment);
+        attachment.clear();
+    }
+
+
     while(!mail_file_stream.eof()){
         string content_line;
         //mail_file_stream >> this_mail.content;
@@ -145,7 +162,16 @@ bool mail::save_to_file(string user_path){
         }
 
         new_mail_file << this->subject << "\n"
-                      << this->content << "\n";
+                      << to_string(this->attachment_count) << "\n";
+
+        if(this->attachment_count > 0){
+            for( string filepath : this->attachments){
+                new_mail_file << filepath << "\n";
+            }
+        }
+
+        new_mail_file << this->content << "\n";
+
 
         new_mail_file.close();
         return true;
@@ -154,13 +180,33 @@ bool mail::save_to_file(string user_path){
     return false;
 }
 
+vector<string> mail::get_attachment_names() const{
+
+    vector<string> names;
+
+    for(string attachment_path : this->attachments){
+        string name = attachment_path.substr(attachment_path.rfind(':')+1);
+        names.push_back(name);
+    }
+
+    return names;
+}
+
 string mail::to_message() const{
+
+    int i = 1;
 
     stringstream return_stream;
     return_stream   << "Sender: " << this->sender << "\n"
                     << "Receiver: " << this->receiver << "\n"
                     << "Subject: " << this->subject << "\n"
-                    << "Content: " << "\n" << this->content << "\n";
+                    << "Number of attachments: " << this->attachment_count << "\n";
+
+    for( string attachment_name : this->attachments){
+        return_stream << "Attachment #" << i << ": " << attachment_name << "\n";
+    }
+
+    return_stream   << "Content: " << "\n" << this->content;
 
     return return_stream.str();
 }

@@ -158,6 +158,39 @@ int mailserver::receive_message(int stream_sd, string& message){
     return message_size;
 }
 
+int mailserver::receive_file(int stream_sd, std::string& filepath, int filesize){
+
+    ofstream new_binary;
+    new_binary.open(filepath, ios::out | ios::binary | ios::trunc);
+
+    if(!new_binary.is_open()){
+        cerr << "could not create new file with path: " << filepath << endl;
+        return -1;
+    }
+
+    char * buffer = new char[MSG_BUF];
+    memset(buffer, 0, MSG_BUF);
+
+    int total_read = 0;
+
+    while(total_read < filesize){
+        int bytes_read = recv(stream_sd,buffer,MSG_BUF, 0);
+        //cout << buffer;
+        if(bytes_read == -1){
+            return -1;
+        }
+        total_read += bytes_read;
+
+        new_binary.write(buffer, bytes_read);
+        memset(buffer, 0, MSG_BUF);
+    }
+
+    new_binary.close();
+
+    delete[] buffer;
+    return total_read;
+}
+
 void mailserver::communicate(int stream_sd){
 
     this->welcome_client(stream_sd);
@@ -181,13 +214,14 @@ void mailserver::communicate(int stream_sd){
         bool op_found = false;
         for(auto ptr : this->op_list){
             if(op_wish == ptr->name){
-                response = ptr->execute(message_stream, this_dir_handler);
+                response = ptr->execute(this, stream_sd, message_stream, this_dir_handler);
                 op_found = true;
                 break;
             }
         }
         if(false == op_found){
             response = "ERR(desired operation not avaiable)\n";
+            continue;
         }
         send_all(stream_sd, response);
         if(response == "GOOD BYE!\n"){

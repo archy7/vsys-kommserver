@@ -22,6 +22,7 @@ private:
 protected:
     void prompt_input(const std::string& name, std::string &messsage, size_t max_len);
     void prompt_input(const std::string& name, std::string &messsage);
+    std::string prompt_input_receivers(const std::string& name, std::string &message);
     std::string prompt_input_user(const std::string& name, std::string &message);
     void prompt_input_password(const std::string& name, std::string& message, bool asterisks);
     std::vector<std::string> prompt_input_attachments();

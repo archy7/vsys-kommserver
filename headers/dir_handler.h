@@ -15,6 +15,8 @@ private:
     std::list<mail> mail_list;
     dir_handler();
 
+    std::string create_attachment_name(std::string filename);
+
     std::string username = "";
 public:
     ~dir_handler();
@@ -23,12 +25,15 @@ public:
     bool user_dir_exists(std::string path);
     void make_user_dir(std::string path); //optional -C als Startoption erstellt das Verzeichnis
     static std::string make_absolute_base_path(std::string path);
+    std::string make_absolute_attachment_path(std::string filename);
     std::string make_absolute_user_path(std::string username);
     bool mail_list_is_empty();
     bool create_mail_list(std::string username);
     std::list<mail> get_mail_list();
     int get_mail_list_length() const;
     std::string list_to_message() const;
+
+    void update_attachment(std::string attachment_path);
 
     void set_username(std::string username);
     std::string get_username();

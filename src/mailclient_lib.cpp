@@ -232,6 +232,76 @@ int mailclient::send_all(const string& message){
     return total;
 }
 
+int mailclient::send_file(string& filepath, int filesize){
+
+    int total = 0;
+    int bytes_sent = 0;
+    int bytes_of_buffer_sent = 0;
+    int bytes_left = filesize;
+    int padding_bytes = 0;
+
+    /**
+     * 	padding_bytes is the number of bytes at the end of the buffer
+     * 	that should be ignored when sending a not fully filled buffer,
+     * 	as it might appear when reading from a file when the buffer size is bigger
+     * 	than the bytes left to read from the file
+     *
+     */
+
+    ifstream attachment_file(filepath, ios::in | ios::binary);
+
+    char * bbuffer = new char[MSG_BUF];
+    memset(bbuffer, 0, MSG_BUF);
+
+    while(total<filesize){ //Es sind noch nicht alle Bytes der Datei geschickt worden
+    	if(MSG_BUF > bytes_left){
+    		attachment_file.read(bbuffer, bytes_left);
+    		padding_bytes = MSG_BUF - bytes_left;
+    	}
+    	else{
+    		attachment_file.read(bbuffer, MSG_BUF);
+    	}
+
+    	bytes_of_buffer_sent = 0;
+    	while(bytes_of_buffer_sent+padding_bytes < MSG_BUF){ //Es ist noch nicht der gesamte Buffer geschickt worden
+    		bytes_sent = send(this->sd, bbuffer+bytes_of_buffer_sent, MSG_BUF-bytes_of_buffer_sent-padding_bytes, 0);
+    		if(-1 == bytes_sent ){
+				cerr << "Error while sending a file to the server." << endl;
+				return -1;
+			}
+    		else{
+    			bytes_of_buffer_sent += bytes_sent;
+    		}
+    	}
+    	if(bytes_of_buffer_sent > MSG_BUF){
+    		cerr << "more bytes sent than intended, fatal error" << endl;
+    		return -1;
+    	}
+		total += bytes_of_buffer_sent;
+		bytes_left -= bytes_of_buffer_sent;
+    }
+
+    /*while(total < filesize){
+        attachment_file.read(bbuffer, MSG_BUF);
+
+        bytes_sent = send(this->sd, bbuffer+total, filesize, 0);
+        if(-1 == bytes_sent ){
+            cerr << "Error while sending a file to the server." << endl;
+            return -1;
+        }
+
+        total += bytes_sent;
+        memset(bbuffer, 0, MSG_BUF);
+    }*/
+
+    delete[] bbuffer;
+    attachment_file.close();
+
+    cout << "filesize: " << filesize << "; and number of bytes sent: " << total << endl;
+
+    return total;
+}
+
 int mailclient::receive_answer(string& answer){
 
     char dummy[MSG_BUF];
