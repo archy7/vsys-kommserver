@@ -20,6 +20,11 @@ string login_operation::execute(mailserver* this_server, int stream_sd, stringst
     string password;
     string last1;
 
+    /**
+     * KOMMENTAR OF DOOM
+     */
+
+
     getline(message_stream, username);
     /**
         KONTROLLEN FÜR ALLE EINGABEN
