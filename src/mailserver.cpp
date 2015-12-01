@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
         Der Listen-Socket ist (wird) iterativ, der Datensocket parallel.
     */
 
-    mailserver server(port, directory);
+    mailserver server = mailserver::make_mailserver(port, directory);
     server.run();
 
     return 0;

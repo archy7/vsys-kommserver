@@ -1,245 +1,83 @@
 #include "../headers/mailclient.h"
 #include "../headers/client_operation.h"
 
+#include "../headers/communication.h"
+#include "../headers/UI.h"
+
 using namespace std;
 
 client_operation::client_operation(int label, string name){
     this->label = label;
     this->name  = name;
-    //    this->user_regex =  = ;
 }
 
 client_operation::~client_operation(){
 
 }
 
-int client_operation::getch(){
-
-    int ch;
-    struct termios t_default, t_hidden;
-
-    tcgetattr(STDIN_FILENO, &t_default);
-    t_hidden = t_default;
-    t_hidden.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &t_hidden);
-
-    ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &t_default);
-
-    return ch;
+string client_operation::get_name(){
+	return this->name;
 }
 
-void client_operation::prompt_input_password(const string& name, string& message, bool asterisks){
-
-    const char BACKSPACE = 127;
-    const char RETURN = 10;
-
-    string password;
-    unsigned char ch=0;
-
-    cout << name << ":" << endl;
-
-    while(RETURN!=(ch=client_operation::getch())){
-        if(BACKSPACE == ch){
-            if(0!=password.length()){
-                if(asterisks){
-                    cout <<"\b \b";
-                }
-                password.resize(password.length()-1);
-            }
-        }
-        else{
-            password += ch;
-            if(asterisks){
-                cout << '*';
-            }
-        }
-    }
-
-    cout << endl;
-    message += password;
-    message += "\n";
+void client_operation::make_available(){
+	this->available = true;
 }
 
-void client_operation::prompt_input(const string& name, string &message, size_t max_len){
+void login_operation::execute(client_assets& my_assets, comm& my_comm){
 
-    string input = "";
+	//CHECK
+	//TODO: Was ist wenn der User schon eingeloggt ist?
 
-    while(input.empty() || input.length() > max_len){
-        if(input.empty())
-            cout << "Enter the " << name << ":" << endl;
-        else if(input.size() > max_len)
-            cout << "The entered " << name << " is too long (maximum of " << max_len << " characters)" << endl
-            << "Please re-enter." << endl;
-        else
-            cerr << "Something went horribly wrong in client_operation::prompt_input -> "<< name << ". LIKE REALLY WRONG" << endl;
-
-        getline(cin, input);
-    }
-    message += input;
-    message += "\n";
-}
-
-string client_operation::prompt_input_receivers(const string& name, string &message){
-
-    string input = "";
-    string receivers;
-    std::regex user_regex("^([i][f][1][4][b][0])([0][1-9]|[1-7][0-9])$");
-
-    cout << "Enter the " << name << "(Enter a . to stop):" << endl;
-
-    while(1){
-        getline(cin, input);
-        if(input == "."){
-            break;
-        }
-        if(!regex_match(input, user_regex)){
-            cout << "At least one of the entered user names has an invalid format." << endl
-            << "Please re-enter." << endl;
-            continue;
-        }
-        receivers += input;
-        receivers += ";";
-    }
-
-    message += receivers;
-    message += "\n";
-
-    return input;
-}
-
-string client_operation::prompt_input_user(const string& name, string &message){
-
-    string input = "";
-    std::regex user_regex("^([i][f][1][4][b][0])([0][1-9]|[1-7][0-9])$");
-
-    cout << "Enter the " << name << ":" << endl;
-
-    while(1){
-        getline(cin, input);
-        if(!regex_match(input, user_regex)){
-            cout << "The entered user names has an invalid format." << endl
-            << "Please re-enter." << endl;
-            continue;
-        }
-        else{
-            break;
-        }
-    }
-
-    message += input;
-    message += "\n";
-
-    return input;
-}
-
-void client_operation::prompt_input(const string& name, string &message){
-
-    string input = "";
-
-    cout << "Enter the " << name << ":" << endl;
-
-    while(input.empty() || input != "."){
-        //if(input.empty())
-        getline(cin, input);
-        if(input == ".")
-            break;
-
-        message += input;
-        message += "\n";
-        input.clear();
-    }
-
-}
-
-vector<string> client_operation::prompt_input_attachments(){
-
-    string input = "";
-    vector<string> filepaths;
-    filepaths.clear();  //zu 90% redundant -> bestätigen
-    bool attaching = true;
-
-    cout << "Do you want to attach files to your mail? [y/n]" << endl;
-
-    do{
-        if(!input.empty()){
-            cout << "There is only yes [y] or no [n]." << endl;
-        }
-        getline(cin, input);
-    }while("y" != input && "n" != input);
-
-    if(input == "y"){
-        cout << "Specify the path to the file that you want to attach:" << endl;
-        //<< "Enter . to stoqp adding files(currently only one allowed and possible)" << endl;
-        while(attaching){
-            getline(cin, input);
-            if("." == input){
-                break;
-            }
-            string filepath = dir_handler::make_absolute_base_path(input);
-            if(filepath.empty()){
-                cout << "could not find the specified file" << endl;
-            }
-            else{
-                filepaths.push_back(filepath);
-                attaching = false; //Das hier sorgt dafür, dass nur eine Datei angehängt werden kann
-            }
-        }
-
-    }
-
-    return filepaths;
-}
-
-string login_operation::execute(mailclient* this_client){
-
+	//PREPARE
     string message = "LOGIN\n";
-
-    this_client->set_username(prompt_input_user("your Username", message));
-    prompt_input_password("Password", message, true);
-
+    string username = my_assets.my_UI.prompt_username() + "\n";
+    message += username;
+    message += my_assets.my_UI.prompt_password(true) + "\n";
     message += ".\n";
 
-    this_client->send_all(message);
+    //SEND
+    my_comm.send_message(message);
+
+    //RECEIVE
     string answer;
-    this_client->receive_answer(answer);
+    my_comm.receive_message(answer);
 
-    cout << answer;
-
-    return message;
-}
-
-string send_operation::execute(mailclient* this_client){
-
-    if(false ==this_client->user_logged_in()){
-        cout << "You need to login first." << endl;
-        return "LOGIN_ERR";
+    //HANDLE
+    stringstream answerstream(answer);
+    string success;
+    getline(answerstream, success, '\n');
+    if(0 == success.compare("OK")){
+    	my_assets.set_username(username);
+    	cout << "Welcome, " << username << "!" << endl;
+    }
+    else{
+    	cout << "Login unsuccesful. You were not logged in and must try again." << endl;
     }
 
+}
+
+void send_operation::execute(client_assets& my_assets, comm& my_comm){
+
+	//CHECK
+    if(false ==my_assets.user_logged_in()){
+        cout << "You need to login first." << endl;
+        return;
+    }
+
+    //PREPARE
     string message = "SEND\n";
 
-    //prompt_input_user("Sender", message);
-    message += this_client->get_username();
-    message += "\n";
-    prompt_input_receivers("Receivers", message);
-    prompt_input("Subject", message, 80);
-    prompt_input("Content of your message", message);
-    auto filepaths = prompt_input_attachments();
-    vector<int> filesizes;
-
-    /**
-        filesize, filename, binary
-    */
-
+    message += my_assets.get_username()+ "\n";
+    message += my_assets.my_UI.prompt_receiver_list() + "\n";
+    message += my_assets.my_UI.prompt_subject() + "\n";
+    message += my_assets.my_UI.prompt_content() + "\n";
     message += ".\n";
 
-    int attachment_count = filepaths.size();
+    list<string> filenames = my_assets.my_UI.prompt_attachments();
+    int attachment_count = filenames.size();
+    message += to_string(attachment_count) + "\n";
 
-    message += to_string(attachment_count);
-    message += "\n";
-
-    if(attachment_count > 0){
+    /*if(attachment_count > 0){
         struct stat buf;
         int status;
 
@@ -266,7 +104,7 @@ string send_operation::execute(mailclient* this_client){
 
         }
 
-    }
+    }*/
 
     message += ".\n";
 
@@ -294,48 +132,45 @@ string send_operation::execute(mailclient* this_client){
     ?<FILESIZE>\n
     .\n
 
-    Die binären Daten der Datei werden in einem separaten send verschickt (sendfile()).
+    Die binären Daten der Datei werden in einem separaten send verschickt.
 
     */
 
-    cout << message;
-    this_client->send_all(message);
+    //cout << message;
+    my_comm.send_message(message);
 
 
-    if(attachment_count > 0){
-        int i = 0;
-        for( auto filepath : filepaths){
+    //int i = 0;
+	for( auto filename : filenames){
 
-            string ok;
-            this_client->receive_answer(ok);
-            cout << ok << endl;
-            if(ok=="GO"){
-                const char* c_path = new char[filepath.length()+1];
-                c_path = filepath.c_str();
+		string confirmation;
+		my_comm.receive_message(confirmation);
+		cout << confirmation << endl;
+		if(confirmation=="GO"){
+			//const char* c_path = new char[filepath.length()+1];
+			//c_path = filepath.c_str();
 
-                FILE* fp = fopen(c_path, "rb");
-                //int in_fd = fileno(fp);
-                //unsigned char buffer[1024];
-                //sendfile(this_client->sd, in_fd, NULL, 1024);
-                cout << "sending file now: " << filepath << " with size: " << filesizes[i] << endl;
-                this_client->send_file(filepath, filesizes[i]);
-                //receive an answer to the data transfer
+			//FILE* fp = fopen(c_path, "rb");
+			//int in_fd = fileNONE(fp);
+			//unsigned char buffer[1024];
+			//sendfile(this_client->sd, in_fd, NULL, 1024);
+			//cout << "sending file NONEw: " << filepath << " with size: " << filesizes[i] << endl;
+			my_comm.send_file(filename);
+			//receive an answer to the data transfer
 
-            }
-            else{
-                cerr << "Error during file transmission communication" << endl;
-                return "ERR(communication failed)\n";
-            }
+		}
+		else{
+			cerr << "Error during file transmission communication" << endl;
+			//TODO: throw here
+		}
 
 
-        }
-    }
+	}
 
     string answer;
-    this_client->receive_answer(answer);
+    my_comm.receive_message(answer);
     cout << answer;
 
-    return "";
 
     /*
 
@@ -355,111 +190,167 @@ string send_operation::execute(mailclient* this_client){
 
 }
 
-string list_operation::execute(mailclient* this_client){
+void list_operation::execute(client_assets& my_assets, comm& my_comm){
 
-    if(false ==this_client->user_logged_in()){
+	//CHECK
+    if(false ==my_assets.user_logged_in()){
         cout << "You need to login first." << endl;
-        return "LOGIN_ERR";
+        return;
     }
 
+    //PREPARE
     string message = "LIST\n";
+    message += my_assets.get_username()+ "\n";
 
-    //prompt_input_user("Sender", message);
-    message += this_client->get_username();
-    message += "\n";
+    //SEND
+    my_comm.send_message(message);
 
-    message += ".\n";
-
-
-    //send
-    this_client->send_all(message);
-    //recv
+    //RECEIVE
     string answer;
-    this_client->receive_answer(answer);
-    cout << answer;
+    my_comm.receive_message(answer);
 
-    return "";
+    //HANDLE
+    //TODO: build local maillist
+    my_assets.clear_mail_list();
+    my_assets.build_mail_list(answer);
+
 }
 
-string read_operation::execute(mailclient* this_client){
+void read_operation::execute(client_assets& my_assets, comm& my_comm){
 
-    if(false ==this_client->user_logged_in()){
+	//CHECK
+    if(false ==my_assets.user_logged_in()){
         cout << "You need to login first." << endl;
-        return "LOGIN_ERR";
+        return;
+    }
+    //CHECK 2
+    if(my_assets.mail_list_empty()){
+    	cout << "You need to perform the LIST command first in order to read specific mails." << endl;
+    	return;
     }
 
-    string message = "READ\n";
-    string mail_id;
-
-    //prompt_input_user("Sender", message);
-    message += this_client->get_username();
-    message += "\n";
-    prompt_input("Mailnumber", message, 10000);
-
-    message += ".\n";
-
-    //send
-    this_client->send_all(message);
-    //recv
-    string answer;
-    this_client->receive_answer(answer);
-    cout << answer;
-
-    return message;
-}
-
-string delete_operation::execute(mailclient* this_client){
-
-    if(false ==this_client->user_logged_in()){
-        cout << "You need to login first." << endl;
-        return "LOGIN_ERR";
+    unsigned int mail_id = my_assets.my_UI.prompt_mail_id();
+    //CHECK 3
+    if(!my_assets.mail_exists(mail_id)){
+    	cout 	<< "The desired mail does not exist." << endl
+    			<< "If you are expecting a mail, try to perform the LIST command again to refresh the mail list." << endl;
+    	return;
     }
 
-    string message = "DEL\n";
+    //CHECK 4
+    mail this_mail = my_assets.find_mail_by_id(mail_id);
+    if(this_mail.has_content()){
+    	my_assets.my_UI.print_mail(this_mail);
+    	return;
+    }
 
-    //prompt_input_user("Sender", message);
-    message += this_client->get_username();
-    message += "\n";
-    prompt_input("Message number", message);
+    //PREPARE
+	string message = "READ\n";
+	message += my_assets.get_username()+ "\n";
 
-    message += ".\n";
+    /*mail& this_mail = my_assets.find_mail_by_id(mail_id);
+    int att_dl = 0;
 
-    //send
-    this_client->send_all(message);
-    //recv
-    string answer;
-    this_client->receive_answer(answer);
-    cout << answer;
-
-    return message;
-}
-
-string quit_operation::execute(mailclient* this_client){
-
-    /*if(false ==this_client->user_logged_in()){
-        cout << "GOOD BYE!" << endl;
-        this_client->stop();
-        return "INSTANT_QUIT";
+    if(this_mail.has_attachments()){
+    	att_dl = my_assets.my_UI.prompt_download_attachment();
+    	if(att_dl != 0){
+    		if(att_dl == -1){
+    			message += att_dl + "\n";
+    		}
+    		else{
+    			unsigned int attachment_id = (unsigned int) att_dl;
+    			if(false == this_mail.has_attachment(attachment_id)){
+    				cout 	<< "Specified attachment does not exist." << endl
+    						<< "NONE attachment will be downloaded." << endl;
+    				message += "NONE\n";
+    			}
+    			else{
+    				cout 	<< "Downloading specified attachment(s)." << endl;
+    				message += att_dl + "\n";
+    			}
+    		}
+    	}
+    }
+    else{
+    	message += "0\n";
     }*/
 
-    string message = "QUIT\n";
 
-    //prompt_input_user("Sender", message);
-    message += this_client->get_username();
-    message += "\n";
+    message += to_string(mail_id) + "\n";
 
-    message += ".\n";
+    cout << "TEST: MESSAGE:" << endl;
+    cout << message;
 
-    //send
-    this_client->send_all(message);
-    //recv
+    //SEND
+    my_comm.send_message(message);
+
+    //RECEIVE
     string answer;
-    this_client->receive_answer(answer);
-    cout << answer;
+    my_comm.receive_message(answer);
 
-    if(answer == "GOOD BYE!\n"){
-        this_client->stop();
+    //HANDLE
+    this_mail.set_content(answer);
+    my_assets.my_UI.print_mail(this_mail);
+
+}
+
+void delete_operation::execute(client_assets& my_assets, comm& my_comm){
+
+	//CHECK
+    if(false ==my_assets.user_logged_in()){
+        cout << "You need to login first." << endl;
+        return;
+    }
+    //CHECK 2
+    if(my_assets.mail_list_empty()){
+    	cout << "You need to perform the LIST command first in order to read specific mails." << endl;
+    	return;
     }
 
-    return message;
+    unsigned int mail_id = my_assets.my_UI.prompt_mail_id();
+    //CHECK 3
+    if(!my_assets.mail_exists(mail_id)){
+    	cout 	<< "The desired mail does not exist." << endl;
+    	return;
+    }
+
+    //PREPARE
+    string message = "DEL\n";
+	message += my_assets.get_username()+ "\n";
+	message += to_string(mail_id);
+
+    //SEND
+    my_comm.send_message(message);
+
+    //RECEIVE
+    string answer;
+    my_comm.receive_message(answer);
+
+    //HANDLE
+    cout << answer;
+
+}
+
+void quit_operation::execute(client_assets& my_assets, comm& my_comm){
+
+	//CHECK
+    if(false ==my_assets.user_logged_in()){
+    	my_assets.shutdown();
+        cout << "Good Bye." << endl;
+        return;
+    }
+
+    //PREPARE
+    string message = "QUIT\n";
+	message += my_assets.get_username()+ "\n";
+
+    //SEND
+    my_comm.send_message(message);
+
+    //RECEIVE
+    string answer;
+    my_comm.receive_message(answer);
+
+    //HANDLE
+    cout << answer;
 }

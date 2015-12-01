@@ -1,5 +1,8 @@
 #include "../headers/mailclient.h"
 
+#include <regex>
+#include <assert.h>
+
 void print_usage(){
     std::cerr << "Usage is: ./mailserver -i(ip adress) -p(port) [-h]" << std::endl;
     exit(1);
@@ -55,7 +58,7 @@ int main(int argc, char* argv[])
             print_usage();
         }
 
-    mailclient client(port, ip_string);
+    mailclient client = mailclient::make_mailclient(port, ip_string);
     client.run();
 
     return 0;

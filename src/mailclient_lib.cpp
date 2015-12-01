@@ -1,5 +1,6 @@
 #include "../headers/mailclient.h"
 #include "../headers/client_operation.h"
+#include "../headers/communication.h"
 
 using namespace std;
 
@@ -11,43 +12,36 @@ using namespace std;
 	running = 0;
 }*/
 
-mailclient::mailclient(int port, string ip_string){
+mailclient::mailclient(){
 
-    if((this->sd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-        cerr << "Problem opening socket. Exiting" << endl;
-        exit(1); //unsauber
-    }
-    else
-        cout << "opened socket" << endl;
+}
 
+mailclient mailclient::make_mailclient(int port, const string& ip_string){
 
-    char* ip_chars = new char[ip_string.length()+1];
-    strcpy(ip_chars, ip_string.c_str());
+	mailclient r_client;
 
-    memset(&this->server_adr, 0, sizeof(this->server_adr));
+	r_client.my_comm = comm::make_communication(port, ip_string);
 
-    inet_aton((const char*) ip_chars, &this->server_adr.sin_addr); //SERVER IP
-    this->server_adr.sin_port = htons(port);
-    this->server_adr.sin_family = AF_INET;
+	r_client.my_assets.initialize();
 
-    delete ip_chars;
+	r_client.op_list.push_back(new login_operation(1, "LOGIN"));
+	r_client.op_list.push_back(new send_operation(2, "SEND"));
+	r_client.op_list.push_back(new list_operation(3, "LIST"));
+	r_client.op_list.push_back(new read_operation(4, "READ"));
+	r_client.op_list.push_back(new delete_operation(5, "DEL"));
+	r_client.op_list.push_back(new quit_operation(6, "QUIT"));
 
-    this->op_list.push_back(new login_operation(1, "LOGIN"));
-    this->op_list.push_back(new send_operation(2, "SEND"));
-    this->op_list.push_back(new list_operation(3, "LIST"));
-    this->op_list.push_back(new read_operation(4, "READ"));
-    this->op_list.push_back(new delete_operation(5, "DEL"));
-    this->op_list.push_back(new quit_operation(6, "QUIT"));
+	return r_client;
 }
 
 mailclient::~mailclient(){
 
-    //Descriptors
+    /*//Descriptors
     if(close(this->sd)==-1){
         cerr << "Problem closing socket." << endl;
     }
     else
-        cout << "closed socket" << endl;
+        cout << "closed socket" << endl;*/
 
     //Memory
 
@@ -57,19 +51,17 @@ mailclient::~mailclient(){
 
 }
 
-void mailclient::set_username(string username){
+/*void mailclient::set_username(string username){
     this->username = username;
 }
 
 string mailclient::get_username(){
     return this->username;
-}
+}*/
 
-bool mailclient::user_logged_in(){
-    return !this->username.empty();
-}
 
-void mailclient::connect_to_server(){ //Verbinden und Antwort des Servers erwarten
+
+/*void mailclient::connect_to_server(){ //Verbinden und Antwort des Servers erwarten
 
     bool connected = false;
     for(int tries = 0; connected == false; ++tries){
@@ -85,7 +77,7 @@ void mailclient::connect_to_server(){ //Verbinden und Antwort des Servers erwart
             cout << "Connection with server " << inet_ntoa (this->server_adr.sin_addr) << ":" << ntohs(this->server_adr.sin_port) << " established." << endl;
         }
     }
-}
+}*/
 
 void mailclient::stop(){
     this->running = 0;
@@ -93,13 +85,13 @@ void mailclient::stop(){
 
 void mailclient::run(){
 
-    this->connect_to_server();
-    this->receive_welcome();
+    this->my_comm.connect_to_server();
+    this->my_comm.receive_welcome(op_list);
     this->communicate();
 
 }
 
-void mailclient::receive_welcome(){
+/*void mailclient::receive_welcome(){
 
     char dummy[MSG_BUF];
     int message_size;
@@ -134,7 +126,7 @@ void mailclient::receive_welcome(){
 
             It must now be parsed to set the Client operations' availability accordingly.
             The QUIT operation is always available and is not offered by the server.
-        */
+        /
 
         string message = c_message;
         stringstream ss(message); //Stringstream cannot be initialized with c-String
@@ -152,64 +144,36 @@ void mailclient::receive_welcome(){
 
         /**
             At this point, the client is informed about what operations the server offers.
-        */
+        /
 
 
     }
 
     delete[] c_message;
-}
+}*/
 
 void mailclient::communicate(){
 
-    while(this->running){
+    while(true == this->my_assets.client_running){
 
-        cout << "Choose what you wish to do" << endl;
-        for( auto ptr : this->op_list){
-            cout << ptr->name << endl;
-        }
-        cout << ">>" << endl;
+    	string op_wish = this->my_assets.my_UI.prompt_menu_option(this->op_list);
 
-        string op_wish;
-        getline(cin, op_wish);
-        transform(op_wish.begin(), op_wish.end(), op_wish.begin(), ::toupper);
+    	if(false == this->my_assets.user_logged_in() && (op_wish != "LOGIN" || op_wish != "QUIT")){
+    		cout << "Operation requires you to be logged in first." << endl;
+    		continue;
+    	}
+
         for( auto ptr : this->op_list){
             if(ptr->name == op_wish){
-                string message = ptr->execute(this);
+                ptr->execute(this->my_assets, this->my_comm);
 
-                /*if(message=="LOGIN_ERR"){
-                    cout << "You need to login first." << endl;
-                    break;
-                }
-
-
-                if(message=="INSTANT_QUIT"){
-                    cout << "GOOD BYE!" << endl;
-                    this->running = 0;
-                    break;
-                }
-
-                send_all(message);
-                string answer;
-                receive_answer(answer);
-                cout << answer;
-
-                /**
-                    für später:
-                        Jede operation weiß, welche Antwort sie erwartet.
-                        deshalb:
-                            ptr->handle_answer(answer);
-                *
-                if(answer == "GOOD BYE!\n"){
-                    this->running = 0;
-                }*/
                 break;
             }
         }
     }
 }
 
-int mailclient::send_all(const string& message){
+/*int mailclient::send_all(const string& message){
 
     unsigned int total = 0;
     int bytes_left = message.length();
@@ -230,9 +194,9 @@ int mailclient::send_all(const string& message){
 
     //delete[] c_message;
     return total;
-}
+}*/
 
-int mailclient::send_file(string& filepath, int filesize){
+/*int mailclient::send_file(string& filepath){
 
     int total = 0;
     int bytes_sent = 0;
@@ -246,7 +210,7 @@ int mailclient::send_file(string& filepath, int filesize){
      * 	as it might appear when reading from a file when the buffer size is bigger
      * 	than the bytes left to read from the file
      *
-     */
+     *
 
     ifstream attachment_file(filepath, ios::in | ios::binary);
 
@@ -292,7 +256,7 @@ int mailclient::send_file(string& filepath, int filesize){
 
         total += bytes_sent;
         memset(bbuffer, 0, MSG_BUF);
-    }*/
+    }
 
     delete[] bbuffer;
     attachment_file.close();
@@ -300,9 +264,9 @@ int mailclient::send_file(string& filepath, int filesize){
     cout << "filesize: " << filesize << "; and number of bytes sent: " << total << endl;
 
     return total;
-}
+}*/
 
-int mailclient::receive_answer(string& answer){
+/*int mailclient::receive_answer(string& answer){
 
     char dummy[MSG_BUF];
     //first peek inside and see how long the message is
@@ -329,7 +293,7 @@ int mailclient::receive_answer(string& answer){
     }
     delete[] c_message;
     return message_size;
-}
+}*/
 
 /*void mailclient::static_shutdown(int sig){
     shutdown(this->sd, SHUTRDWR);

@@ -10,6 +10,7 @@ mail::mail(){
     this->subject  = "";
     this->content  = "";
     this->filename = "";
+    this->attachment_count = 0;
 }
 
 mail::~mail(){
@@ -21,12 +22,36 @@ void mail::set_receiver(string receiver){
     this->receiver = receiver;
 }
 
+bool mail::has_content(){
+	return !this->content.empty();
+}
+
+bool mail::has_attachment(unsigned int id){
+
+	//TODO: throw exception when id < 1
+
+	return id<=this->attachment_count;
+}
+
+bool mail::has_attachments(){
+	return this->attachment_count > 0;
+}
+
+unsigned int mail::get_attachment_count(){
+	return this->attachment_count;
+}
+
+void mail::set_content(string new_content){
+
+	this->content = new_content;
+}
+
 void mail::set_mail_id(int mail_id){
 
     this->mail_id = mail_id;
 }
 
-int mail::get_mail_id() const{
+unsigned int mail::get_mail_id() const{
 
     return this->mail_id;
 }

@@ -5,14 +5,51 @@
 #include <iostream>
 #include <fstream>
 
+#include <unistd.h>
+
 class mail;
 
 #include "../headers/mails.h"
 
+#define CLIENT 1
+#define SERVER 2
+
 class dir_handler{
 private:
+	//Properties
+	int type =-1;
+	std::string base_path = "";
+
+	//private helpers
+	std::string create_attachment_name(std::string filename);
+
+public:
+	//Constructor
+	dir_handler(); //supposed to be private.
+	//Destructor
+	~dir_handler();
+	//Factory
+	static dir_handler make_server_handler(std::string path);
+	static dir_handler make_client_handler();
+
+	//static helpers
+	static bool dir_exists(std::string path);
+	static std::string make_absolute_path(std::string filename);
+	//static std::string string_from_c_string(char* c_string);
+	static std::string filename_from_path(const std::string& full_path);
+
+	//server helpers
+	bool user_dir_exists(std::string path);
+	void make_user_dir(std::string path);
+	std::string make_absolute_attachment_path(std::string filename);
+	std::string make_absolute_user_path(std::string username);
+	void update_attachment(std::string attachment_path);
+};
+
+/*class dir_handler{
+private:
     std::string base_path;
-    std::list<mail> mail_list;
+    std::list<mail> mail_list; //FÄLLT WEG
     dir_handler();
 
     std::string create_attachment_name(std::string filename);
@@ -27,17 +64,18 @@ public:
     static std::string make_absolute_base_path(std::string path);
     std::string make_absolute_attachment_path(std::string filename);
     std::string make_absolute_user_path(std::string username);
-    bool mail_list_is_empty();
-    bool create_mail_list(std::string username);
-    std::list<mail> get_mail_list();
-    int get_mail_list_length() const;
-    std::string list_to_message() const;
+    bool mail_list_is_empty(); //FÄLLT WEG
+    bool create_mail_list(std::string username); //FÄLLT WEG
+    std::list<mail> get_mail_list(); //FÄLLT WEG
+    int get_mail_list_length() const; //FÄLLT WEG
+    std::string list_to_message() const; //FÄLLT VORERST WEG
 
     void update_attachment(std::string attachment_path);
 
-    void set_username(std::string username);
-    std::string get_username();
-    bool user_logged_in();
-};
+    void set_username(std::string username); //fällt weg
+    std::string get_username(); //fällt weg
+    bool user_logged_in(); 	//fällt weg
+};*/
+
 
 #endif // DIR_HANDLER_H_INCLUDED

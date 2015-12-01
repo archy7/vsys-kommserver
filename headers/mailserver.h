@@ -30,9 +30,30 @@
 
 #include "../headers/server_operation.h"
 
-#define MSG_BUF 1024
+/*class mailserver{
 
-void shutdown(int sig);
+private:
+	//Constructor
+	mailserver();
+	//Serveroperation = Controller
+	std::list<server_operation*> op_list;
+	//Threads
+	std::list<std::shared_ptr<std::thread>> server_threads;
+
+	//Communication and Assets
+	comm my_comm;
+	server_assets my_assets;
+
+public:
+	//Destructor
+	~mailserver();
+	//Factory
+	static mailserver make_mailserver(int port, const std::string directory);
+
+	//Methods
+	void start();
+
+};*/
 
 class mailserver{
 
@@ -61,5 +82,37 @@ public:
     int send_all(int stream_sd, const std::string& message);
 
 };
+
+/*class mailclient{
+
+private:
+	//Constructor
+	mailclient();
+	//Clientoperationen = Controller
+	std::list<client_operation*> op_list;
+
+	//Communication and Assets
+	comm my_comm;
+	client_assets my_assets;
+
+	//Properties
+	bool running = 1;
+
+public:
+	//Destructor
+    ~mailclient();
+    //Factory-Method
+    static mailclient make_mailclient(int port, const std::string& ip_string);
+
+    //Methods
+    void run();
+    void stop();
+    void communicate();
+
+    //Getters and Setters
+    void set_username(std::string username);
+    std::string get_username();
+
+};*/
 
 #endif // MAILSERVER_H_INCLUDED

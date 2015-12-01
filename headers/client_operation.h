@@ -1,12 +1,12 @@
 #ifndef CLIENT_OPERATION_H_INCLUDED
 #define CLIENT_OPERATION_H_INCLUDED
 
-#include <termios.h>
-#include <sys/sendfile.h>
-#include <sys/stat.h>
-#include <stdio.h>
+#include "../headers/client_assets.h"
+#include "../headers/communication.h"
 
-class mailclient;
+
+//#include <sys/stat.h>
+//#include <stdio.h>
 
 class client_operation{
 
@@ -18,23 +18,13 @@ private:
 
     bool available = false;
 
-
-protected:
-    void prompt_input(const std::string& name, std::string &messsage, size_t max_len);
-    void prompt_input(const std::string& name, std::string &messsage);
-    std::string prompt_input_receivers(const std::string& name, std::string &message);
-    std::string prompt_input_user(const std::string& name, std::string &message);
-    void prompt_input_password(const std::string& name, std::string& message, bool asterisks);
-    std::vector<std::string> prompt_input_attachments();
-
-    int getch();
-
-
 public:
     client_operation(int label, std::string name);
     virtual ~client_operation();
-    virtual std::string execute(mailclient* this_client) = 0;
+    virtual void execute(client_assets& my_assets, comm& my_comm) = 0;
 
+    std::string get_name();
+    void make_available();
 
 };
 
@@ -42,41 +32,41 @@ class login_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 
 class send_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 
 class read_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 
 class list_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 
 class delete_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 
 class quit_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    std::string execute(mailclient* this_client);
+    void execute(client_assets& my_assets, comm& my_comm);
 };
 #endif // CLIENT_OPERATION_H_INCLUDED

@@ -43,11 +43,16 @@ mailserver::mailserver(int port, string directory){
     this->op_list.push_back(new quit_operation(6, "QUIT"));
 }
 
+mailserver mailserver::make_mailserver(int port, const string& directory){
+
+	mailserver r_server;
+}
+
 mailserver::~mailserver(){
 
-    if(close(this->listen_sd)==-1){
+    /*if(close(this->listen_sd)==-1){
         cerr << "Problem closing listening socket." << endl;
-    }
+    }*/
 
     /**
         MEMORY DER LISTE DELETEN

@@ -13,21 +13,46 @@ dir_handler::~dir_handler(){
 
 }
 
-dir_handler dir_handler::make_dir_handler(string path){
+dir_handler dir_handler::make_server_handler(string path){
 
-    dir_handler this_handler;
+	//TODO: Throw exception when dir does not exist
+
+    dir_handler server_handler;
+    server_handler.type = SERVER;
     if(dir_exists(path)){
-        this_handler.base_path = make_absolute_base_path(path);
+    	server_handler.base_path = make_absolute_path(path);
     }
     else{
-        this_handler.base_path = "";
         cerr << "Something went horribly wrong when making a dir_handler" << endl;
     }
 
-    return this_handler;
+    return server_handler;
 }
 
-void dir_handler::set_username(std::string username){
+dir_handler dir_handler::make_client_handler(){
+
+    dir_handler client_handler;
+    client_handler.type = CLIENT;
+
+    char * c_username = new char[512];
+    getlogin_r(c_username, 512);
+
+    string username(c_username);
+
+    client_handler.base_path = "/home/" + username + "/Downloads/";
+
+    delete[] c_username;
+    return client_handler;
+}
+
+string dir_handler::filename_from_path(const string& full_path){
+
+	string filename = full_path.substr(full_path.rfind("/"), -1);
+
+	return filename;
+}
+
+/*void dir_handler::set_username(std::string username){
     this->username = username;
 }
 
@@ -171,9 +196,9 @@ string dir_handler::make_absolute_attachment_path(string filename){
 
 void dir_handler::update_attachment(std::string attachment_path){
 
-}
+}*/
 
-string dir_handler::make_absolute_base_path(string path){
+string dir_handler::make_absolute_path(string path){
 
     const char* path_chars = new char[path.length()+1];
     path_chars = path.c_str();
@@ -207,7 +232,7 @@ string dir_handler::make_absolute_user_path(string username){
 
 bool dir_handler::dir_exists(string path){
 
-    string mail_path_string = make_absolute_base_path(path);
+    string mail_path_string = make_absolute_path(path);
     if(mail_path_string.empty()){
         return false;
     }
