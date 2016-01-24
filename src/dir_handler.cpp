@@ -2,6 +2,8 @@
 #include "../headers/server_operation.h"
 #include "../headers/dir_handler.h"
 
+#include <dirent.h>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -13,17 +15,19 @@ dir_handler::~dir_handler(){
 
 }
 
-dir_handler dir_handler::make_server_handler(string path){
+dir_handler dir_handler::make_server_handler(string dir_name){
 
 	//TODO: Throw exception when dir does not exist
 
     dir_handler server_handler;
     server_handler.type = SERVER;
+    string path = dir_handler::make_absolute_path(dir_name);
     if(dir_exists(path)){
     	server_handler.base_path = make_absolute_path(path);
     }
     else{
         cerr << "Something went horribly wrong when making a dir_handler" << endl;
+        exit(1);
     }
 
     return server_handler;
@@ -140,9 +144,9 @@ string dir_handler::list_to_message() const{
     }
 
     return return_stream.str();
-}
+}*/
 
-string dir_handler::create_attachment_name(string filename){
+string dir_handler::create_attachment_file_name(string filename){
 
     string new_filename;
 
@@ -170,7 +174,7 @@ string dir_handler::create_attachment_name(string filename){
 
     string date_string = date_time.str();
 
-    int thread_id = pthread_self();
+    long thread_id = pthread_self();
     string thread_id_string = to_string(thread_id);
 
     new_filename += date_string;
@@ -184,19 +188,24 @@ string dir_handler::create_attachment_name(string filename){
     return new_filename;
 }
 
-string dir_handler::make_absolute_attachment_path(string filename){
+string dir_handler::make_absolute_attachment_file_path(string filename){
 
-    string full_filename = this->create_attachment_name(filename);
-    string attachment_path = this->base_path;
-    attachment_path += "/files/";
+    string full_filename = this->create_attachment_file_name(filename);
+    string attachment_path = this->make_absolute_attachment_dir_path();
     attachment_path += full_filename;
 
     return attachment_path;
 }
 
+string dir_handler::make_absolute_attachment_dir_path(){
+
+	string attachment_dir_path = this->base_path + "/files/";
+	return attachment_dir_path;
+}
+
 void dir_handler::update_attachment(std::string attachment_path){
 
-}*/
+}
 
 string dir_handler::make_absolute_path(string path){
 
@@ -218,7 +227,7 @@ string dir_handler::make_absolute_path(string path){
     }
 }
 
-string dir_handler::make_absolute_user_path(string username){
+string dir_handler::make_absolute_user_dir_path(string username){
 
     string user_path = this->base_path;
     user_path += "/";
@@ -267,7 +276,7 @@ bool dir_handler::dir_exists(string path){
 
 bool dir_handler::user_dir_exists(string username){
 
-    string user_path_string = make_absolute_user_path(username);
+    string user_path_string = make_absolute_user_dir_path(username);
     const char* user_path = new char[user_path_string.length()+1];
     user_path = user_path_string.c_str();
 
@@ -293,11 +302,11 @@ bool dir_handler::user_dir_exists(string username){
 
 void dir_handler::make_user_dir(string username){
 
-    string user_path_string = make_absolute_user_path(username);
+    string user_path_string = make_absolute_user_dir_path(username);
     const char* user_path = new char[user_path_string.length()+1];
     user_path = user_path_string.c_str();
 
-    if(mkdir(user_path, 0777) != 0){//Unsauber, ungenau. Gefällt mir nicht (777)
+    if(mkdir(user_path, 0777) != 0){//Unsauber, ungenau. Gefällt mir nicht (0777 -> 0700)
         cerr << "error creating user directory" << endl;
     }
     //delete[] user_path;

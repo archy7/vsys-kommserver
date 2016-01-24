@@ -20,16 +20,18 @@ mailclient mailclient::make_mailclient(int port, const string& ip_string){
 
 	mailclient r_client;
 
-	r_client.my_comm = comm::make_communication(port, ip_string);
+	r_client.my_comm = client_comm::make_client_comm(port, ip_string);
 
-	r_client.my_assets.initialize();
+	r_client.my_assets.my_handler = dir_handler::make_client_handler();
 
-	r_client.op_list.push_back(new login_operation(1, "LOGIN"));
-	r_client.op_list.push_back(new send_operation(2, "SEND"));
-	r_client.op_list.push_back(new list_operation(3, "LIST"));
-	r_client.op_list.push_back(new read_operation(4, "READ"));
-	r_client.op_list.push_back(new delete_operation(5, "DEL"));
-	r_client.op_list.push_back(new quit_operation(6, "QUIT"));
+	r_client.my_assets.initialize(); //?? does nothing so far
+
+	r_client.op_list.push_back(new c_login_operation(1, "LOGIN"));
+	r_client.op_list.push_back(new c_send_operation(2, "SEND"));
+	r_client.op_list.push_back(new c_list_operation(3, "LIST"));
+	r_client.op_list.push_back(new c_read_operation(4, "READ"));
+	r_client.op_list.push_back(new c_delete_operation(5, "DEL"));
+	r_client.op_list.push_back(new c_quit_operation(6, "QUIT"));
 
 	return r_client;
 }
@@ -79,9 +81,9 @@ string mailclient::get_username(){
     }
 }*/
 
-void mailclient::stop(){
+/*void mailclient::stop(){
     this->running = 0;
-}
+}*/
 
 void mailclient::run(){
 

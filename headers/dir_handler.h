@@ -20,16 +20,13 @@ private:
 	int type =-1;
 	std::string base_path = "";
 
-	//private helpers
-	std::string create_attachment_name(std::string filename);
-
 public:
 	//Constructor
 	dir_handler(); //supposed to be private.
 	//Destructor
 	~dir_handler();
 	//Factory
-	static dir_handler make_server_handler(std::string path);
+	static dir_handler make_server_handler(std::string dir_name);
 	static dir_handler make_client_handler();
 
 	//static helpers
@@ -37,12 +34,14 @@ public:
 	static std::string make_absolute_path(std::string filename);
 	//static std::string string_from_c_string(char* c_string);
 	static std::string filename_from_path(const std::string& full_path);
+	static std::string create_attachment_file_name(std::string filename);
 
 	//server helpers
 	bool user_dir_exists(std::string path);
 	void make_user_dir(std::string path);
-	std::string make_absolute_attachment_path(std::string filename);
-	std::string make_absolute_user_path(std::string username);
+	std::string make_absolute_attachment_file_path(std::string filename);
+	std::string make_absolute_attachment_dir_path();
+	std::string make_absolute_user_dir_path(std::string username);
 	void update_attachment(std::string attachment_path);
 };
 

@@ -1,15 +1,23 @@
 #include "../headers/communication.h"
 #include "../headers/client_operation.h"
-
-#define MAX_RETRIES 3
-#define MSG_BUF 1024
+#include "../headers/server_operation.h"
 
 #include <iostream> //cin,cout,cerr
 #include <string.h> //meset, strcpy
 #include <sstream>
 
+#define MAX_RETRIES 3
+#define MSG_BUF 1024
 
 using namespace std;
+
+/**
+ *  commons: Con and Destructor
+ *  send_file
+ *  receive_file
+ *  send_message
+ *  receieve_message
+ */
 
 comm::comm(){
 
@@ -18,118 +26,9 @@ comm::comm(){
 comm::~comm(){
 
 	//TODO: throw exception when closing fails
-    if(close(this->sd)==-1){
+    if(close(this->stream_sd)==-1){
         cerr << "Problem closing socket." << endl;
     }
-}
-
-comm comm::make_communication(int port, const string& ip_string){
-
-	comm r_comm;
-
-	//TODO: throw exception when opening fails
-
-    if((r_comm.sd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-        cerr << "Problem opening socket. Exiting" << endl;
-        exit(1); //unsauber -
-    }
-    else
-        cout << "opened socket" << endl;
-
-
-    char* ip_chars = new char[ip_string.length()+1];
-    strcpy(ip_chars, ip_string.c_str());
-
-    memset(&r_comm.partner_adr, 0, sizeof(r_comm.partner_adr));
-
-    inet_aton((const char*) ip_chars, &r_comm.partner_adr.sin_addr); //SERVER IP
-    r_comm.partner_adr.sin_port = htons(port);
-    r_comm.partner_adr.sin_family = AF_INET;
-
-    delete ip_chars;
-
-    return r_comm;
-}
-
-void comm::connect_to_server(){
-
-	//TODO: throw exception when connection fails
-
-    bool connected = false;
-    for(int tries = 0; connected == false; ++tries){
-        if(connect(this->sd, reinterpret_cast<const struct sockaddr*>(&this->partner_adr), sizeof(this->partner_adr)) == -1){
-            sleep(2);
-            if(tries == MAX_RETRIES){
-                cerr << "Connection failed after 3 retrys. Exiting." << endl;
-                exit(1);
-            }
-        }
-        else{
-            connected = true;
-            cout << "Connection with server " << inet_ntoa (this->partner_adr.sin_addr) << ":" << ntohs(this->partner_adr.sin_port) << " established." << endl;
-        }
-    }
-}
-
-void comm::receive_welcome(list<client_operation*>& server_op_list){
-
-    char dummy[MSG_BUF];
-    int message_size;
-    int double_check;
-
-    //first peek inside and watch how long the message is
-    message_size=recv(this->sd,dummy,MSG_BUF-1, MSG_PEEK);
-    //allocate memory accordingly
-    char * c_message = new char[message_size];
-    //again check for the length of the message.
-    double_check=recv(this->sd, c_message, message_size, 0);
-    if(double_check != message_size){
-        cerr << "Something went horribly wrong in comm::receive_welcome()" << endl;
-    }
-
-    if (message_size>0){
-        c_message[message_size]= '\0';
-        //cout << c_message;
-        /**
-            The welcome message of the server at this point has the following format (example):
-            "LOGIN\nSEND\nLIST\nREAD\nDEL\nQUIT\n.\n"
-
-            reading as:
-
-            LOGIN
-            SEND
-            LIST
-            READ
-            DEL
-            QUIT
-            .
-
-            It must now be parsed to set the Client operations' availability accordingly.
-            The QUIT operation is always available and is not offered by the server.
-        */
-
-        string message = c_message;
-        stringstream ss(message); //Stringstream cannot be initialized with c-String
-        string op_name;
-        while(getline(ss, op_name, '\n')){
-            if( "." == op_name){
-                break;
-            }
-            for(auto ptr : server_op_list){
-                if(op_name == ptr->get_name()){
-                    ptr->make_available();
-                }
-            }
-        }
-
-        /**
-            At this point, the client is informed about what operations the server offers.
-        */
-
-
-    }
-
-    delete[] c_message;
 }
 
 int comm::send_message(const std::string& message){
@@ -144,7 +43,7 @@ int comm::send_message(const std::string& message){
     c_message = message.c_str();
 
     while(total < message.length()){
-        bytes_sent = send(this->sd, c_message+total, bytes_left, 0);
+        bytes_sent = send(this->stream_sd, c_message+total, bytes_left, 0);
         if(-1 == bytes_sent ){
             cerr << "Error while sending a message to the server." << endl;
             return -1;
@@ -219,7 +118,7 @@ int comm::send_file(const std::string& filename){
 
 		bytes_of_buffer_sent = 0;
 		while(bytes_of_buffer_sent+padding_bytes < MSG_BUF){ //Es ist noch nicht der gesamte Buffer geschickt worden
-			bytes_sent = send(this->sd, bbuffer+bytes_of_buffer_sent, MSG_BUF-bytes_of_buffer_sent-padding_bytes, 0);
+			bytes_sent = send(this->stream_sd, bbuffer+bytes_of_buffer_sent, MSG_BUF-bytes_of_buffer_sent-padding_bytes, 0);
 			if(-1 == bytes_sent ){
 				cerr << "Error while sending a file to the server." << endl;
 				return -1;
@@ -250,7 +149,7 @@ int comm::receive_message(std::string& buf_message){
 
     char dummy[MSG_BUF];
     //first peek inside and see how long the message is
-    int message_size=recv(this->sd,dummy,MSG_BUF-1, MSG_PEEK);
+    int message_size=recv(this->stream_sd,dummy,MSG_BUF-1, MSG_PEEK);
     if(0 == message_size){
         cerr << "Remote socket was closed" << endl;
         return 0;
@@ -262,7 +161,7 @@ int comm::receive_message(std::string& buf_message){
     //allocate memory accordingly
     char * c_message = new char [message_size+1];
     //again check for the length of the message.
-    int double_check=recv(this->sd, c_message, message_size, 0);
+    int double_check=recv(this->stream_sd, c_message, message_size, 0);
     if(double_check != message_size){
         cerr << "Something went horribly wrong in mailclient::receive_answer()" << endl;
     }
@@ -275,6 +174,260 @@ int comm::receive_message(std::string& buf_message){
     return message_size;
 }
 
-int comm::receive_file(){
+int comm::receive_file(const string& dirpath, int receiver_count, mail& new_mail){
+
+	string header;
+	receive_message(header);
+	stringstream header_stream(header);
+	string filename;
+	string filesize;
+	getline(header_stream, filename);
+	getline(header_stream, filesize);
+
+    string prefix = to_string(receiver_count) + ":";
+    filename = prefix + filename;
+    filename = dir_handler::create_attachment_file_name(filename);
+
+	string filepath = dirpath + filename;
+
+	int i_filesize = stoi(filesize);
+	send_message("GO");
+
+
+	ofstream new_binary;
+	new_binary.open(filepath, ios::out | ios::binary | ios::trunc);
+
+	if(!new_binary.is_open()){
+		cerr << "could not create new file with path: " << filepath << endl;
+		return -1;
+	}
+
+	char * buffer = new char[MSG_BUF];
+	memset(buffer, 0, MSG_BUF);
+
+	int total_read = 0;
+
+	while(total_read < i_filesize){
+		int bytes_read = recv(stream_sd,buffer,MSG_BUF, 0);
+		//cout << buffer;
+		if(bytes_read == -1){
+			return -1;
+		}
+		total_read += bytes_read;
+
+		new_binary.write(buffer, bytes_read);
+		memset(buffer, 0, MSG_BUF);
+	}
+
+	new_binary.close();
+
+	new_mail.add_attachment_path(filepath);
+
+	delete[] buffer;
+	return total_read;
+}
+
+/**
+ *  client_comm:
+ *  Factory-Method
+ *  connect_to_server
+ *  receive_welcome
+ */
+
+client_comm client_comm::make_client_comm(int port, const string& ip_string){
+
+	client_comm r_comm;
+
+	//TODO: throw exception when opening fails
+
+    if((r_comm.stream_sd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+        cerr << "Problem opening socket. Exiting" << endl;
+        exit(1); //unsauber -
+    }
+    else
+        cout << "opened socket" << endl;
+
+
+    char* ip_chars = new char[ip_string.length()+1];
+    strcpy(ip_chars, ip_string.c_str());
+
+    memset(&r_comm.partner_adr, 0, sizeof(r_comm.partner_adr));
+
+    inet_aton((const char*) ip_chars, &r_comm.partner_adr.sin_addr); //SERVER IP
+    r_comm.partner_adr.sin_port = htons(port);
+    r_comm.partner_adr.sin_family = AF_INET;
+
+    delete ip_chars;
+
+    return r_comm;
+}
+
+void client_comm::connect_to_server(){
+
+	//TODO: throw exception when connection fails
+
+    bool connected = false;
+    for(int tries = 0; connected == false; ++tries){
+        if(connect(this->stream_sd, reinterpret_cast<const struct sockaddr*>(&this->partner_adr), sizeof(this->partner_adr)) == -1){
+            sleep(2);
+            if(tries == MAX_RETRIES){
+                cerr << "Connection failed after 3 retrys. Exiting." << endl;
+                exit(1);
+            }
+        }
+        else{
+            connected = true;
+            cout << "Connection with server " << inet_ntoa (this->partner_adr.sin_addr) << ":" << ntohs(this->partner_adr.sin_port) << " established." << endl;
+        }
+    }
+}
+
+void client_comm::receive_welcome(list<client_operation*>& client_op_list){
+
+	//TODO: looping buffer instead of total buffer
+
+    char dummy[MSG_BUF];
+    int message_size;
+    int double_check;
+
+    //first peek inside and watch how long the message is
+    message_size=recv(this->stream_sd,dummy,MSG_BUF-1, MSG_PEEK);
+    //allocate memory accordingly
+    char * c_message = new char[message_size];
+    //again check for the length of the message.
+    double_check=recv(this->stream_sd, c_message, message_size, 0);
+    if(double_check != message_size){
+        cerr << "Something went horribly wrong in comm::receive_welcome()" << endl;
+    }
+
+    if (message_size>0){
+        c_message[message_size]= '\0';
+        //cout << c_message;
+        /**
+            The welcome message of the server at this point has the following format (example):
+            "LOGIN\nSEND\nLIST\nREAD\nDEL\nQUIT\n.\n"
+
+            reading as:
+
+            LOGIN
+            SEND
+            LIST
+            READ
+            DEL
+            QUIT
+            .
+
+            It must now be parsed to set the Client operations' availability accordingly.
+            The QUIT operation is always available and is not offered by the server.
+        */
+
+        string message = c_message;
+        stringstream ss(message); //Stringstream cannot be initialized with c-String
+        string op_name;
+        while(getline(ss, op_name, '\n')){
+            if( "." == op_name){
+                break;
+            }
+            for(auto op_ptr : client_op_list){
+                /*if(op_name == ptr->get_name()){
+                    ptr->make_available();
+                }*/
+            	if(op_name == op_ptr->name){ //NUR so, weil aus irgendeinem Grund die Setter undefined references sind
+					op_ptr->available = true;
+				}
+            }
+        }
+
+        /**
+            At this point, the client is informed about what operations the server offers.
+        */
+
+
+    }
+
+    delete[] c_message;
+}
+
+/**
+ *  server_comm:
+ *  Factory-Method (includes binding socket)
+ *  accept_connection
+ */
+
+server_comm::~server_comm(){
+
+	//TODO: error handling
+
+    if(close(this->listen_sd)==-1){
+        cerr << "Problem closing socket." << endl;
+    }
+
+	close(this->listen_sd);
+}
+
+server_comm server_comm::make_server_comm(int port){
+
+	server_comm r_comm;
+
+	//TODO: exceptions instead of exit(1)
+
+	if((r_comm.listen_sd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+		cerr << "Problem opening socket. Exiting" << endl;
+		exit(1); //unsauber -
+	}
+
+
+	memset(&r_comm.my_adr, 0, sizeof(r_comm.my_adr));
+	r_comm.my_adr.sin_addr.s_addr = htonl (INADDR_ANY);
+	r_comm.my_adr.sin_port = htons(port);
+	r_comm.my_adr.sin_family = AF_INET;
+	//this->my_adress.sin_zero = nullptr;
+
+	if(bind(r_comm.listen_sd, reinterpret_cast<const sockaddr*>(&r_comm.my_adr), sizeof(r_comm.my_adr)) == -1){ //potenzielles Problem bei zweitem Parameter
+		cerr << "Problem binding listening socket. Exiting" << endl;
+		exit(1);
+	}
+
+	return r_comm;
+}
+
+int server_comm::socket_listen(){
+
+	//TODO: throw exception instead of exit(1)
+
+	int status = listen(this->listen_sd, 500);
+
+	if(-1 == status){
+		cerr << "Error when listening on socket" << endl;
+		cerr << strerror(errno) << endl;
+		exit(1);
+	}
+
+	return status;
+}
+
+int server_comm::accept_connection(){
+
+	//TODO: exception (?)
+
+	socklen_t addr_len = sizeof(this->partner_adr);
+	int stream_sd = accept(this->listen_sd, reinterpret_cast<sockaddr*>(&this->partner_adr), &addr_len);
+
+	return stream_sd;
+}
+
+void server_comm::send_welcome(list<server_operation*>& server_op_list){
+
+    cout << "Connection accepted from " << inet_ntoa (this->partner_adr.sin_addr) << ":" << ntohs(this->partner_adr.sin_port) << endl;
+    string message;
+
+    for(auto ptr : server_op_list){
+        //message += ptr->get_name();
+    	message += ptr->name;
+        message += "\n";
+
+    }
+
+    send_message(message);
 
 }

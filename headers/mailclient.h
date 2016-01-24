@@ -17,7 +17,7 @@ private:
 	std::list<client_operation*> op_list;
 
 	//Communication and Assets
-	comm my_comm;
+	client_comm my_comm;
 	client_assets my_assets;
 
 public:
@@ -28,7 +28,7 @@ public:
 
     //Methods
     void run();
-    void stop();
+    //void stop();
     void communicate();
 
     //Getters and Setters

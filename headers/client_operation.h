@@ -10,7 +10,9 @@
 
 class client_operation{
 
+friend class client_comm;
 friend class mailclient;
+friend class UI;
 
 private:
     int label;
@@ -19,54 +21,61 @@ private:
     bool available = false;
 
 public:
+
     client_operation(int label, std::string name);
     virtual ~client_operation();
-    virtual void execute(client_assets& my_assets, comm& my_comm) = 0;
+    virtual void execute(client_assets& my_assets, client_comm& my_comm) = 0;
 
-    std::string get_name();
-    void make_available();
+    //std::string get_name();
+    //void make_available();
 
 };
 
-class login_operation : public client_operation{
+class c_login_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 
-class send_operation : public client_operation{
+class c_send_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 
-class read_operation : public client_operation{
+class c_read_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 
-class list_operation : public client_operation{
+class c_list_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 
-class delete_operation : public client_operation{
+class c_delete_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 
-class quit_operation : public client_operation{
+class c_quit_operation : public client_operation{
 
 public:
     using client_operation::client_operation;
-    void execute(client_assets& my_assets, comm& my_comm);
+    void execute(client_assets& my_assets, client_comm& my_comm);
+
 };
 #endif // CLIENT_OPERATION_H_INCLUDED

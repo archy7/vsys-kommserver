@@ -15,15 +15,17 @@ client_operation::~client_operation(){
 
 }
 
-string client_operation::get_name(){
+//WARUM UNDEFINED REFERENCE?
+
+/*string client_operation::get_name(){
 	return this->name;
 }
 
 void client_operation::make_available(){
 	this->available = true;
-}
+}*/
 
-void login_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_login_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
 	//TODO: Was ist wenn der User schon eingeloggt ist?
@@ -56,7 +58,7 @@ void login_operation::execute(client_assets& my_assets, comm& my_comm){
 
 }
 
-void send_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_send_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
     if(false ==my_assets.user_logged_in()){
@@ -190,7 +192,7 @@ void send_operation::execute(client_assets& my_assets, comm& my_comm){
 
 }
 
-void list_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_list_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
     if(false ==my_assets.user_logged_in()){
@@ -216,7 +218,7 @@ void list_operation::execute(client_assets& my_assets, comm& my_comm){
 
 }
 
-void read_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_read_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
     if(false ==my_assets.user_logged_in()){
@@ -294,7 +296,7 @@ void read_operation::execute(client_assets& my_assets, comm& my_comm){
 
 }
 
-void delete_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_delete_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
     if(false ==my_assets.user_logged_in()){
@@ -331,7 +333,7 @@ void delete_operation::execute(client_assets& my_assets, comm& my_comm){
 
 }
 
-void quit_operation::execute(client_assets& my_assets, comm& my_comm){
+void c_quit_operation::execute(client_assets& my_assets, client_comm& my_comm){
 
 	//CHECK
     if(false ==my_assets.user_logged_in()){

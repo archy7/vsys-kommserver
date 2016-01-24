@@ -20,7 +20,8 @@ string UI::prompt_menu_option(list<client_operation*>& server_op_list){
 
 	cout << "Choose what you wish to do" << endl;
 	for( auto ptr : server_op_list){
-		cout << ptr->get_name() << endl;
+		//cout << ptr->get_name() << endl;
+		cout << ptr->name << endl;
 	}
 	cout << ">>" << endl;
 
@@ -261,7 +262,7 @@ void UI::print_mail(const mail& this_mail){
 			<< "Number of attachments: " << this_mail.attachment_count << "\n";
 
     int i = 1;
-    for( string attachment_name : this_mail.attachments){
+    for( string attachment_name : this_mail.get_attachment_names()){
         cout << "Attachment #" << i << ": " << attachment_name << "\n";
     }
 

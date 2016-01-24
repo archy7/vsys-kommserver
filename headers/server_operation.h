@@ -1,26 +1,22 @@
 #ifndef SERVER_OPERATION_H_INCLUDED
 #define SERVER_OPERATION_H_INCLUDED
 
-#include "../headers/dir_handler.h"
+/*#include "../headers/dir_handler.h"
+#include "../headers/server_assets.h"
+#include "../headers/communication.h"
+
 
 #include <string.h>
 #include <stdlib.h>
 #include <ldap.h>
-//#include <lber.h>
+//#include <lber.h>*/
 
-#define LDAP_HOST "ldap.technikum-wien.at"
-#define LDAP_PORT 389
-#define SEARCHBASE "dc=technikum-wien,dc=at"
-#define SCOPE LDAP_SCOPE_SUBTREE
-#define FILTER "(uid=if14b*)"
-#define ANON_USER NULL		/* anonymous bind with user and pw NULL */
-#define ANON_PW NULL
-
-
-class mailserver;
+#include "../headers/server_assets.h"
+#include "../headers/communication.h"
 
 class server_operation{
 
+friend class server_comm;
 friend class mailserver;
 
 private:
@@ -29,45 +25,45 @@ private:
 public:
     server_operation(int label, std::string name);
     virtual ~server_operation();
-    virtual std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler) = 0;
+    virtual void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream) = 0;
 
-
+    std::string get_name();
 };
 
-class login_operation : public server_operation{
+class s_login_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
-class send_operation : public server_operation{
+class s_send_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
-class read_operation : public server_operation{
+class s_read_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
-class list_operation : public server_operation{
+class s_list_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
-class delete_operation : public server_operation{
+class s_delete_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
-class quit_operation : public server_operation{
+class s_quit_operation : public server_operation{
 public:
     using server_operation::server_operation;
-    std::string execute(mailserver* this_server, int stream_sd, std::stringstream& message_stream, dir_handler& this_handler);
+    void execute(server_assets& my_assets, server_comm& my_comm, std::stringstream& message_stream);
 };
 
 #endif // SERVER_OPERATION_H_INCLUDED

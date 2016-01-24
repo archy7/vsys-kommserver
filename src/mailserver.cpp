@@ -1,6 +1,8 @@
 #include "../headers/mailserver.h"
 #include "../headers/dir_handler.h"
 
+#include <assert.h>
+
 void print_usage(){
     std::cerr << "Usage is: ./mailserver -p[value] -d[value] [-h]" << std::endl;
     exit(1);

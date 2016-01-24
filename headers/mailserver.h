@@ -6,13 +6,13 @@
 
 */
 
-#include <sys/socket.h>
+/*#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <errno.h>
+#include <errno.h>*/
 
-#include <iostream>
+/*#include <iostream>
 #include <fstream>
 #include <getopt.h>
 #include <string>
@@ -26,11 +26,16 @@
 #include <memory>
 #include <thread>
 #include <dirent.h> //Verzeichnis-funktionen
-#include <sys/stat.h>
+#include <sys/stat.h>*/
+
+#include <memory>
+#include <thread>
 
 #include "../headers/server_operation.h"
+#include "../headers/communication.h"
+#include "../headers/server_assets.h"
 
-/*class mailserver{
+class mailserver{
 
 private:
 	//Constructor
@@ -41,21 +46,22 @@ private:
 	std::list<std::shared_ptr<std::thread>> server_threads;
 
 	//Communication and Assets
-	comm my_comm;
+	server_comm my_comm;
 	server_assets my_assets;
 
 public:
 	//Destructor
 	~mailserver();
 	//Factory
-	static mailserver make_mailserver(int port, const std::string directory);
+	static mailserver make_mailserver(int port, const std::string& directory);
 
 	//Methods
-	void start();
+	void run();
+	void communicate();
 
-};*/
+};
 
-class mailserver{
+/*class mailserver{
 
 private:
     //Serveroperationen
@@ -73,7 +79,7 @@ private:
 
     void communicate(int stream_sd);
 public:
-    mailserver(int port, std::string directory);
+    mailserver(int port, const std::string& directory);
     ~mailserver();
 
     void run();
@@ -81,7 +87,7 @@ public:
     int receive_file(int stream_sd, std::string& filepath, int filesize);
     int send_all(int stream_sd, const std::string& message);
 
-};
+};*/
 
 /*class mailclient{
 

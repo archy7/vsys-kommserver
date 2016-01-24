@@ -1,6 +1,7 @@
 #include "../headers/mailserver.h"
 #include "../headers/server_operation.h"
 #include "../headers/dir_handler.h"
+#include "../headers/server_assets.h"
 
 using namespace std;
 
@@ -12,40 +13,29 @@ void shutdown(int sig){
 	running = 0;
 }*/
 
-mailserver::mailserver(int port, string directory){
+mailserver::mailserver(){
 
-    this->directory = directory;
-
-    if((this->listen_sd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-        cerr << "Problem opening listening socket. Exiting" << endl;
-        exit(1);
-    }
-
-    memset(&this->my_adress, 0, sizeof(this->my_adress));
-    this->my_adress.sin_addr.s_addr = htonl (INADDR_ANY);
-    this->my_adress.sin_port = htons(port);
-    this->my_adress.sin_family = AF_INET;
-    //this->my_adress.sin_zero = nullptr;
-
-    if(bind(this->listen_sd, reinterpret_cast<const sockaddr*>(&this->my_adress), sizeof(this->my_adress)) == -1){ //potenzielles Problem bei zweitem Parameter
-        cerr << "Problem binding listening socket. Exiting" << endl;
-        exit(1);
-    }
-
-    //shared_ptr<server_operation> temp_ptr;
-
-    //temp_ptr = make_shared<send_operation>(1, "SEND");
-    this->op_list.push_back(new login_operation(1, "LOGIN"));
-    this->op_list.push_back(new send_operation(2, "SEND"));
-    this->op_list.push_back(new list_operation(3, "LIST"));
-    this->op_list.push_back(new read_operation(4, "READ"));
-    this->op_list.push_back(new delete_operation(5, "DEL"));
-    this->op_list.push_back(new quit_operation(6, "QUIT"));
 }
 
 mailserver mailserver::make_mailserver(int port, const string& directory){
 
 	mailserver r_server;
+
+	//Comm
+	r_server.my_comm = server_comm::make_server_comm(port);
+
+	//Assets
+	r_server.my_assets.my_handler = dir_handler::make_server_handler(directory);
+
+	//Operations
+	r_server.op_list.push_back(new s_login_operation(1, "LOGIN"));
+	r_server.op_list.push_back(new s_send_operation(2, "SEND"));
+	r_server.op_list.push_back(new s_list_operation(3, "LIST"));
+	r_server.op_list.push_back(new s_read_operation(4, "READ"));
+	r_server.op_list.push_back(new s_delete_operation(5, "DEL"));
+	r_server.op_list.push_back(new s_quit_operation(6, "QUIT"));
+
+    return r_server;
 }
 
 mailserver::~mailserver(){
@@ -64,10 +54,21 @@ mailserver::~mailserver(){
 
 void mailserver::run(){
 
-    listen(this->listen_sd, 500);
-    socklen_t addr_len = sizeof(this->client_adr);
+	this->my_comm.socket_listen();
 
-    string message;
+	while(1){
+		cout << "Waiting for Connections..." << endl;
+		if(this->my_comm.accept_connection() == -1){
+	          cerr << "There was an error when accepting a connection." << endl;
+		}
+		else{
+			auto communicate_lambda = [this](){this->communicate();};
+			this->server_threads.push_back(make_shared<std::thread>(communicate_lambda));
+		}
+	}
+
+    /*listen(this->listen_sd, 500);
+    socklen_t addr_len = sizeof(this->client_adr);
 
     /**
         for( auto this_robot: robot_vec ){
@@ -75,7 +76,7 @@ void mailserver::run(){
             thread_vec.push_back(std::make_shared<std::thread>(find_lambda));
     }
 
-    */
+    /
 
 
     while(1){
@@ -90,10 +91,10 @@ void mailserver::run(){
         }
 
     }
-    close(this->listen_sd);
+    close(this->listen_sd);*/
 }
 
-int mailserver::send_all(int stream_sd, const string& message){
+/*int mailserver::send_all(int stream_sd, const string& message){
 
     unsigned int total = 0;
     int bytes_left = message.length();
@@ -111,9 +112,9 @@ int mailserver::send_all(int stream_sd, const string& message){
         bytes_left -= bytes_sent;
     }
     return total;
-}
+}*/
 
-void mailserver::welcome_client(int stream_sd){
+/*void mailserver::welcome_client(int stream_sd){
 
     cout << "Connection accepted from " << inet_ntoa (this->client_adr.sin_addr) << ":" << ntohs(this->client_adr.sin_port) << endl;
     string message;
@@ -128,9 +129,9 @@ void mailserver::welcome_client(int stream_sd){
 
     message += ".\n";
     send_all(stream_sd, message);
-}
+}*/
 
-int mailserver::receive_message(int stream_sd, string& message){
+/*int mailserver::receive_message(int stream_sd, string& message){
 
     char dummy[MSG_BUF];
 
@@ -150,20 +151,20 @@ int mailserver::receive_message(int stream_sd, string& message){
     int double_check=recv(stream_sd, c_message, message_size, 0);
     /*if(double_check != message_size){
         cerr << "Something went horribly wrong in mailserver::receive_message()" << endl;
-    }*/
+    }*
 
     if (message_size>0){
         c_message[message_size]= '\0';
         message = c_message;
         /*cout << "Client sent:" << endl;
         cout << c_message;
-        cout << message;*/
+        cout << message;*
     }
     delete[] c_message;
     return message_size;
-}
+}*/
 
-int mailserver::receive_file(int stream_sd, std::string& filepath, int filesize){
+/*int mailserver::receive_file(int stream_sd, std::string& filepath, int filesize){
 
     ofstream new_binary;
     new_binary.open(filepath, ios::out | ios::binary | ios::trunc);
@@ -194,17 +195,43 @@ int mailserver::receive_file(int stream_sd, std::string& filepath, int filesize)
 
     delete[] buffer;
     return total_read;
-}
+}*/
 
-void mailserver::communicate(int stream_sd){
+void mailserver::communicate(){
 
-    this->welcome_client(stream_sd);
+	this->my_comm.send_welcome(this->op_list);
+
+	do{
+		string message;
+		this->my_comm.receive_message(message);
+		stringstream message_stream(message);
+
+		string desired_op;
+		getline(message_stream, desired_op);
+
+		if(desired_op != "LOGIN" && my_assets.is_user_logged_in()){
+			my_comm.send_message("ERR\nYou are not logged in.\n");
+			continue;
+		}
+
+		for(auto ptr : this->op_list){
+			//if(desired_op == ptr->get_name()){
+			if(desired_op == ptr->name){
+				ptr->execute(this->my_assets, this->my_comm, message_stream);
+				break;
+			}
+		}
+
+
+	}while(this->my_assets.server_running);
+
+    /*this->welcome_client(stream_sd);
 
     /**
         Here the actual communication between server and client takes place.
         The server receives requests by the client and acts accordingly.
         He does so by reading the first line of the incoming request. (as it is specified in the protocol)
-    */
+    *
 
     dir_handler this_dir_handler = dir_handler::make_dir_handler(this->directory);
 
@@ -233,7 +260,7 @@ void mailserver::communicate(int stream_sd){
             break;
         }
 
-    }while(/*running*/1);
+    }while(/*running*1);
 
-     close (stream_sd);
+     close (stream_sd);*/
 }

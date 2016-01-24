@@ -1,7 +1,11 @@
-#include "../headers/mailserver.h"
+/*#include "../headers/mailserver.h"
 #include "../headers/server_operation.h"
 #include "../headers/dir_handler.h"
-#include "../headers/mails.h"
+#include "../headers/mails.h"*/
+
+#include "../headers/server_operation.h"
+
+#define MAX_LOGIN 3
 
 using namespace std;
 
@@ -13,24 +17,29 @@ server_operation::server_operation(int label, string name){
 server_operation::~server_operation(){
 
 }
+//warum undefined reference??
 
-string login_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+/*string server_operation::get_name(){
+	return this->name;
+}*/
+
+void s_login_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
+
+	stringstream response_stream;
 
     string username;
     string password;
-    string last1;
-
 
     getline(message_stream, username);
     /**
         KONTROLLEN FÜR ALLE EINGABEN
     */
     getline(message_stream, password);
-    getline(message_stream, last1);
+    /*getline(message_stream, last1);
 
     if(last1.compare(".")!=0){
         return "ERR(Protocol was violated)\n";
-    }
+    }*/
 
     /*LDAP *ld;			// LDAP resource handle
     LDAPMessage *result, *e;	// LDAP result handle
@@ -114,17 +123,37 @@ string login_operation::execute(mailserver* this_server, int stream_sd, stringst
 
     return "OK\nWelcome, " + username + "!\n";*/
 
-    this_handler.set_username(username);
-    return "OK\nWelcome, " + username + "!\n";
+    //CHECK 1
+    if(my_assets.is_user_banned(username)){
+    	response_stream << "ERR\nUser is still banned.\n";
+    	//response_stream << TIME UNTIL NO LONGER BANNED
+    }
+    else
+    //CHECK 2
+	if(my_assets.LDAP_login(username, password) == false){
+		my_assets.user_failed_login();
 
+		response_stream << "ERR\nFailed to login. Credentials were wrong.\n";
+
+		if(MAX_LOGIN == my_assets.get_login_tries()){
+			my_assets.ban_user(username);
+			response_stream << "Too many failed Login-Attempts (" << MAX_LOGIN << "). You are now banned for 30 minutes.\n";
+		}
+    }
+    else{
+    	my_assets.login_user(username);
+    	response_stream << "OK\nWelcome, " + username + "!\n";
+    }
+
+    string response = response_stream.str();
+
+    my_comm.send_message(response);
 }
 
-string send_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+void s_send_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
 
-    if(false == this_handler.user_logged_in()){
+	stringstream response_stream;
 
-        return "ERR\n(No user is logged in)";
-    }
 
     string sender;
     string receivers;
@@ -140,9 +169,6 @@ string send_operation::execute(mailserver* this_server, int stream_sd, stringstr
 
     //Sender, Receiver and Subject are all delimited by \n
     getline(message_stream, sender);
-    /**
-        KONTROLLEN FÜR ALLE EINGABEN
-    */
     getline(message_stream, receivers);
     stringstream receiverstream(receivers);
     string receiver;
@@ -172,16 +198,9 @@ string send_operation::execute(mailserver* this_server, int stream_sd, stringstr
 
     }
 
-
-    //Die letzten 3 Zeichen herausziehen und auf Korrektheit überprüfen \n.\n
-    //last4 = content.substr(content.length()-4);
-
     /*if(last4.compare("\n.\n\n")!=0){
         return "ERR\n(Protocol was violated)";
     }*/
-
-    //content = content.substr(0,content.rfind("\n.\n"));
-
 
     /**
         komtrollen: SIND ZU LÖSCHEN
@@ -192,189 +211,170 @@ string send_operation::execute(mailserver* this_server, int stream_sd, stringstr
     cout << "Attachment count: " << attachment_count << endl;
     */
 
-
-
     int i_attachment_count = stoi(attachment_count);
 
+    mail new_mail = mail::make_new_mail(sender, receiver, subject, content, i_attachment_count); //missing: attachment_paths, receiver
 
-    vector<string> filepaths;
-    vector<int> filesizes;
+    //list<string> filepaths;
 
-    if(i_attachment_count > 0){
+    for(int i=0; i<i_attachment_count; ++i){
 
-        for(int i=0; i<i_attachment_count; ++i){
+        /*string prefix = to_string(receiver_vec.size()) + ":";
+        string filename = prefix + filename;
+        string abs_att_path = my_assets.my_handler.make_absolute_attachment_path(filename);*/
+    	string dirpath = my_assets.my_handler.make_absolute_attachment_dir_path();
 
+        my_comm.send_message("GO");
+        //cout << "receiving file " << filename << " with size: " << filesize << endl;
+        int total = my_comm.receive_file(dirpath, receiver_vec.size(), new_mail);
+        //cout << "received file: " << filename << " with size: " << total << endl;;
 
-            string filename;
-            string filesize;
-            getline(message_stream, filename);
-            getline(message_stream, filesize);
-
-            string prefix = to_string(receiver_vec.size()) + ":";
-            filename = prefix + filename;
-            string abs_filename = this_handler.make_absolute_attachment_path(filename);
-
-            this_server->send_all(stream_sd, "GO");
-            cout << "receiving file " << filename << " with size: " << filesize << endl;
-            int total = this_server->receive_file(stream_sd, abs_filename, stoi(filesize));
-            cout << "received file: " << filename << " with size: " << total << endl;;
-
-
-
-            //cout << "absolute path to file: " << abs_filename << endl;
-            filepaths.push_back(abs_filename);
-            filesizes.push_back(stoi(filesize));
-        }
+        //cout << "absolute path to file: " << abs_filename << endl;
+        //filepaths.push_back(abs_att_path);
     }
-
-    //VERIFY PROTOCOL
-    getline(message_stream, line);
-    if(line != "."){
-        return "ERR\n(Protocol was violated)";
-    }
-
-
-
 
     bool save_succesful = true;
     for (auto rec : receiver_vec){
-        if(this_handler.user_dir_exists(rec)==false){
+        if(my_assets.my_handler.user_dir_exists(rec)==false){
             cout << "Could not find user directory, therefore creating one" << endl;
-            this_handler.make_user_dir(rec);
+            my_assets.my_handler.make_user_dir(rec);
         }
 
-        mail new_mail = mail::make_new_mail(sender, rec, subject, content, i_attachment_count, filepaths, filesizes);
-
         //save it
-        string userpath = this_handler.make_absolute_user_path(rec);
+        string userpath = my_assets.my_handler.make_absolute_user_dir_path(rec);
         if(new_mail.save_to_file(userpath) == false){
             save_succesful = false;
         }
     }
 
-    return (save_succesful) ? "OK\n" : "ERR(could not save mails or attachments)\n";
+    if(!save_succesful){
+    	response_stream <<  "ERR\nCould not save an attachment.\n";
+    }
+    else{
+    	response_stream << "OK\n";
+    }
+
+    my_comm.send_message(response_stream.str());
+
 }
 
-string read_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+void s_read_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
 
-    if(false == this_handler.user_logged_in()){
-        return "ERR\n(No user is logged in)";
-    }
+	stringstream response_stream;
 
     string receiver;
     string mail_id;
-    string last1;
 
     getline(message_stream, receiver);
     /**
         KONTROLLEN FÜR ALLE EINGABEN
     */
     getline(message_stream, mail_id);
-    getline(message_stream, last1);
 
-    if(last1.compare(".")!=0){
-        return "ERR(Protocol was violated)\n";
+
+    if(my_assets.my_handler.user_dir_exists(receiver)==false){
+        response_stream <<  "ERR\nUser directory does not exist. The user has never received a mail.\n";
+        my_comm.send_message(response_stream.str());
+        return;
     }
 
-    if(this_handler.user_dir_exists(receiver)==false){
-        return "ERR(User does not exist)\n";
+    if(my_assets.mail_list_empty()){
+    	my_assets.create_mail_list(receiver);
     }
 
-    if(this_handler.mail_list_is_empty()){
-        this_handler.create_mail_list(receiver);
-    }
+    int i_maild_id = stoi(mail_id);
 
-    for(const mail& mail_obj: this_handler.get_mail_list()){
-        if(mail_obj.get_mail_id() == stoi(mail_id)){
-            return "OK\n" + mail_obj.to_message();
+    for(const mail& mail_obj: my_assets.get_mail_list()){
+        if(mail_obj.get_mail_id() == i_maild_id){
+            response_stream << "OK\n";
+            response_stream <<  mail_obj.get_content();
+            my_comm.send_message(response_stream.str());
+            return;
         }
     }
 
-    return "ERR\n(Message not found)";
+    response_stream << "ERR\nMail does not exist.\n";
+    my_comm.send_message(response_stream.str());
 
 }
 
-string list_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+void s_list_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
 
-    if(false == this_handler.user_logged_in()){
-        return "ERR\n(No user is logged in)";
-    }
+	stringstream response_stream;
 
     string receiver;
     string last1;
 
     getline(message_stream, receiver);
-    /**
-        KONTROLLEN FÜR ALLE EINGABEN
-    */
     getline(message_stream, last1);
 
-    if(last1.compare(".")!=0){
-        return "ERR\n(Protocol was violated)";
+
+    if(my_assets.my_handler.user_dir_exists(receiver)==false){
+        response_stream <<  "ERR\nUser directory does not exist. The user has never received an email.\n";
     }
 
-    if(this_handler.user_dir_exists(receiver)==false){
-        return "ERR\n(User does not exist)";
-    }
+    my_assets.create_mail_list(receiver);
 
-    this_handler.create_mail_list(receiver);
+    response_stream << "OK\n";
 
-    return this_handler.list_to_message();
+    response_stream << my_assets.mail_list_to_message();
+
+    my_comm.send_message(response_stream.str());
 
 }
 
-string delete_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+void s_delete_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
 
-    if(false == this_handler.user_logged_in()){
-        return "ERR\n(No user is logged in)";
-    }
+	stringstream response_stream;
 
     string receiver;
     string mail_id;
-    string last1;
 
     getline(message_stream, receiver);
-    /**
-        KONTROLLEN FÜR ALLE EINGABEN
-    */
     getline(message_stream, mail_id);
-    getline(message_stream, last1);
 
-    if(last1.compare(".")!=0){
-        return "ERR\n(Protocol was violated)";
+    if(my_assets.my_handler.user_dir_exists(receiver)==false){
+    	response_stream <<  "ERR\nUser directory does not exist. The user has never received an email.\n";
+        my_comm.send_message(response_stream.str());
+        return;
     }
 
-    if(this_handler.user_dir_exists(receiver)==false){
-        return "ERR\n(User does not exist)";
-    }
-
-    if(this_handler.mail_list_is_empty()){
-        this_handler.create_mail_list(receiver);
+    if(my_assets.mail_list_empty()){
+    	my_assets.create_mail_list(receiver);
     }
 
 
     bool delete_succesful = false;
-    for(const mail& mail_obj: this_handler.get_mail_list()){
+    for(const mail& mail_obj: my_assets.get_mail_list()){
+
         if(mail_obj.get_mail_id() == stoi(mail_id)){
-            string userpath = this_handler.make_absolute_user_path(receiver);
+            string userpath = my_assets.my_handler.make_absolute_user_dir_path(receiver);
             delete_succesful = mail_obj.delete_file(userpath);
             if(delete_succesful){
-                //this_handler.update_attachment(attachment_path);
-                this_handler.create_mail_list(receiver);
+
+            	for(const string& attachment_path : mail_obj.get_attachment_paths()){
+            		my_assets.my_handler.update_attachment(attachment_path);
+            	}
+            	my_assets.create_mail_list(receiver);
                 break;
             }
         }
     }
 
-    return (delete_succesful) ? "OK\n" : "ERR\n";
+    if(delete_succesful){
+    	response_stream <<  "OK\n";
+    }
+    else{
+    	response_stream <<  "ERR\nSpecified mail not found.\n";
+    }
 
+    my_comm.send_message(response_stream.str());
 }
 
-string quit_operation::execute(mailserver* this_server, int stream_sd, stringstream& message_stream, dir_handler& this_handler){
+void s_quit_operation::execute(server_assets& my_assets, server_comm& my_comm, stringstream& message_stream){
 
-    /*if(false == this_handler.user_logged_in()){
-        return "ERR\n(No user is logged in)";
-    }*/
+	my_assets.logout_user();
+	my_assets.shutdown();
 
-    return "GOOD BYE!\n";
+	my_comm.send_message("GOOD BYE!\n");
 }
